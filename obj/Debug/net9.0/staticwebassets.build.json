@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "OvQFjsdVaZtIw1LzsK1tJFU3OKY+SSjQ/jT1boDXhIc=",
+  "Source": "OurCheckSplitter.Api",
+  "BasePath": "_content/OurCheckSplitter.Api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

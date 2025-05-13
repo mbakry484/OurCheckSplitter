@@ -1,0 +1,54 @@
+[
+  {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.FriendsController",
+    "Method": "GetAllFriends",
+    "RelativePath": "api/Friends",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.FriendsController",
+    "Method": "CreateFriend",
+    "RelativePath": "api/Friends",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "OurCheckSplitter.Api.DTOs.FriendDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.ReceiptController",
+    "Method": "GetAllReceipts",
+    "RelativePath": "api/Receipt",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.ReceiptController",
+    "Method": "CreateReceipt",
+    "RelativePath": "api/Receipt",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "receipt",
+        "Type": "OurCheckSplitter.Api.Entities.Receipt",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]
