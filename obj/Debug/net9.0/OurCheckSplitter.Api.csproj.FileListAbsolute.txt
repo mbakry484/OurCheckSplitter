@@ -6,6 +6,8 @@ C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\OurCheckSplitter.Api.runtimeconfig.json
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\OurCheckSplitter.Api.dll
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\OurCheckSplitter.Api.pdb
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\AutoMapper.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\AutoMapper.Extensions.Microsoft.DependencyInjection.dll
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Azure.Core.dll
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Azure.Identity.dll
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Humanizer.dll
@@ -164,6 +166,7 @@ C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.csproj.CoreCompileInputs.cache
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.sourcelink.json
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\scopedcss\bundle\OurCheckSplitter.Api.styles.css
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\staticwebassets.build.json
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\staticwebassets.development.json

@@ -11,5 +11,7 @@
 
 
         public int ReceiptId { get; set; }
+
+        public List<ItemAssignment> Assignments { get; set; } = new();
     }
 }

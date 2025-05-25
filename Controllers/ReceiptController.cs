@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OurCheckSplitter.Api.Data;
@@ -14,9 +15,12 @@ namespace OurCheckSplitter.Api.Controllers
     {
         private readonly OurCheckSplitterContext _context;
 
-        public ReceiptController(OurCheckSplitterContext context)
+        private readonly IMapper _mapper;
+
+        public ReceiptController(OurCheckSplitterContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
 
@@ -25,9 +29,13 @@ namespace OurCheckSplitter.Api.Controllers
         public async Task<IActionResult> GetAllReceipts()
         {
             var TotalReceipts = await _context.Receipts.
-                Include(r=>r.Friends).
-                Include(r=>r.Items).
-                ToListAsync();
+             Include(r=>r.Friends)
+            .Include(r => r.Items)
+            .ThenInclude(i => i.Assignments)
+            .Include(r => r.Items)
+            .ThenInclude(i => i.Assignments)
+            .ThenInclude(a => a.FriendAssignments).
+             ToListAsync();
 
             return Ok(TotalReceipts);
         }
@@ -41,18 +49,9 @@ namespace OurCheckSplitter.Api.Controllers
                 return BadRequest("No Receipt Added.");
             }
 
-            var Receipt = new Receipt
-            {
-                Name = dto.Name,
-                Total=dto.Total,
-                Tax=dto.Tax,
-                Tips=dto.Tips,
-                Friends=dto.Friends<>,
-                Items=dto.Items<>
+            var receipt = _mapper.Map<Receipt>(dto);
 
-            };
-
-            _context.Receipts.Add(Receipt);
+            _context.Receipts.Add(receipt);
             await _context.SaveChangesAsync();
 
             return Ok(dto);

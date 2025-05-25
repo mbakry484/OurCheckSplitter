@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace OurCheckSplitter.Api.Entities
 {
@@ -10,6 +11,8 @@ namespace OurCheckSplitter.Api.Entities
         public string? Name { get; set; }
 
         public int? ReceiptId { get; set; }
+
+        [JsonIgnore]
         public Receipt? Receipt { get; set; }  
     }
 

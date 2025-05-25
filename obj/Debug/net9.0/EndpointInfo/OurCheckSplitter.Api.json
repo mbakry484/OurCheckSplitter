@@ -65,17 +65,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Receipt"
+                "$ref": "#/components/schemas/ReceiptDto"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/Receipt"
+                "$ref": "#/components/schemas/ReceiptDto"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/Receipt"
+                "$ref": "#/components/schemas/ReceiptDto"
               }
             }
           }
@@ -90,31 +90,6 @@
   },
   "components": {
     "schemas": {
-      "Friend": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "name": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "receiptId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "receipt": {
-            "$ref": "#/components/schemas/Receipt"
-          }
-        },
-        "additionalProperties": false
-      },
       "FriendDto": {
         "type": "object",
         "properties": {
@@ -125,13 +100,27 @@
         },
         "additionalProperties": false
       },
-      "Item": {
+      "ItemAssignmentDto": {
         "type": "object",
         "properties": {
-          "id": {
+          "itemAssignmentIndex": {
             "type": "integer",
             "format": "int32"
           },
+          "assignedFriendsId": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ItemDto": {
+        "type": "object",
+        "properties": {
           "name": {
             "type": "string",
             "nullable": true
@@ -144,21 +133,20 @@
             "type": "number",
             "format": "double"
           },
-          "receiptId": {
-            "type": "integer",
-            "format": "int32"
+          "assignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemAssignmentDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
       },
-      "Receipt": {
+      "ReceiptDto": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "receiptName": {
+          "name": {
             "type": "string",
             "nullable": true
           },
@@ -177,14 +165,14 @@
           "friends": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Friend"
+              "$ref": "#/components/schemas/FriendDto"
             },
             "nullable": true
           },
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/Item"
+              "$ref": "#/components/schemas/ItemDto"
             },
             "nullable": true
           }

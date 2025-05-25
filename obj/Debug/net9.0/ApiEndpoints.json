@@ -44,8 +44,8 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "receipt",
-        "Type": "OurCheckSplitter.Api.Entities.Receipt",
+        "Name": "dto",
+        "Type": "OurCheckSplitter.Api.DTOs.ReceiptDto",
         "IsRequired": true
       }
     ],
