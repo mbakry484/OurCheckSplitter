@@ -29,9 +29,14 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Property<int?>("ReceiptId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("ReceiptId1")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ReceiptId");
+
+                    b.HasIndex("ReceiptId1");
 
                     b.ToTable("Friends");
                 });
@@ -139,9 +144,14 @@ namespace OurCheckSplitter.Api.Migrations
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Friend", b =>
                 {
-                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", "Receipt")
+                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", null)
                         .WithMany("Friends")
-                        .HasForeignKey("ReceiptId");
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", "Receipt")
+                        .WithMany()
+                        .HasForeignKey("ReceiptId1");
 
                     b.Navigation("Receipt");
                 });
@@ -177,7 +187,7 @@ namespace OurCheckSplitter.Api.Migrations
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.ItemAssignment", b =>
                 {
                     b.HasOne("OurCheckSplitter.Api.Entities.Item", "Item")
-                        .WithMany()
+                        .WithMany("Assignments")
                         .HasForeignKey("ItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -191,6 +201,11 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("Receipt");
+                });
+
+            modelBuilder.Entity("OurCheckSplitter.Api.Entities.Item", b =>
+                {
+                    b.Navigation("Assignments");
                 });
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.ItemAssignment", b =>

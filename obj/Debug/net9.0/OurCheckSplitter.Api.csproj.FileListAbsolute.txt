@@ -183,4 +183,3 @@ C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.pdb
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\OurCheckSplitter.Api.genruntimeconfig.cache
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\ref\OurCheckSplitter.Api.dll
-C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.0\staticwebassets.upToDateCheck.txt

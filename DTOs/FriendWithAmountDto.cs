@@ -4,7 +4,7 @@
     {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;
-            public decimal AmountToPay { get; set; }
+            public decimal? AmountToPay { get; set; }
      
 
     }

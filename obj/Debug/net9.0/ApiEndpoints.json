@@ -26,6 +26,22 @@
     "ReturnTypes": []
   },
   {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.FriendsController",
+    "Method": "DeleteFriend",
+    "RelativePath": "api/Friends",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "OurCheckSplitter.Api.Controllers.ReceiptController",
     "Method": "GetAllReceipts",
     "RelativePath": "api/Receipt",
@@ -47,6 +63,22 @@
         "Name": "dto",
         "Type": "OurCheckSplitter.Api.DTOs.ReceiptDto",
         "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "OurCheckSplitter.Api.Controllers.ReceiptController",
+    "Method": "DeleteReceipt",
+    "RelativePath": "api/Receipt",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": false
       }
     ],
     "ReturnTypes": []

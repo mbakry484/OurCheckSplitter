@@ -1,5 +1,6 @@
 ﻿using OurCheckSplitter.Api.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace OurCheckSplitter.Api.Data
 {
@@ -14,5 +15,10 @@ namespace OurCheckSplitter.Api.Data
         public DbSet<ItemAssignment> ItemAssignments { get; set; }
         public DbSet<FriendAssignment> FriendAssignments { get; set; }
 
-    }
+      
+
+    };
+    
+
+
 }
