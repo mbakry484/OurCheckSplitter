@@ -81,56 +81,6 @@ namespace OurCheckSplitter.Api.Controllers
 
             return Ok(receiptDtos);
         }
-         [HttpGet("{id}")]
-        public async Task<IActionResult> GetReceiptById(int id)
-        {
-            var receipt = await _context.Receipts
-                .Include(r => r.Friends)
-                .Include(r => r.Items)
-                .ThenInclude(i => i.Assignments)
-                .ThenInclude(a => a.FriendAssignments)
-                .ThenInclude(fa => fa.Friend)
-                .FirstOrDefaultAsync(r => r.Id == id);
-            if (receipt == null)
-                return NotFound("Receipt not found");
-
-            var receiptDto = new ReceiptResponseDto
-            {
-                Id = receipt.Id,
-                Name = receipt.Name,
-                Tax = receipt.Tax,
-                Tips = receipt.Tips,
-                Total = receipt.Total,
-                Friends = receipt.Friends.Select(f => new FriendResponseDto
-                {
-                    Id = f.Id,
-                    Name = f.Name
-                }).ToList(),
-                Items = receipt.Items.Select(item => new ItemResponseDto
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Quantity = item.Quantity,
-                    Price = item.Price,
-                    Assignments = item.Assignments
-                        .OrderBy(a => a.Id)
-                        .Select((assignment, index) => new ItemAssignmentResponseDto
-                        {
-                            Id = assignment.Id,
-                            Unitlabel = $"unit{index + 1}",
-                            Price = assignment.Price,
-                            Quantity = assignment.Quantity,
-                            AssignedFriends = assignment.FriendAssignments
-                                .Select(fa => new FriendResponseDto
-                                {
-                                    Id = fa.Friend.Id,
-                                    Name = fa.Friend.Name
-                                }).ToList()
-                        }).ToList()
-                }).ToList()
-            };
-            return Ok(receiptDto);
-        }
 
         //Create a new Receipt
         [HttpPost]
@@ -482,12 +432,13 @@ namespace OurCheckSplitter.Api.Controllers
             var friendAmounts = new Dictionary<int, decimal>();
             var friendNames = new Dictionary<int, string>();
 
-            // For each assignment, add the assignment price to each assigned friend's total
             foreach (var item in receipt.Items)
             {
                 foreach (var assignment in item.Assignments)
                 {
                     var assignedFriends = assignment.FriendAssignments.Select(fa => fa.Friend).ToList();
+                    if (assignedFriends.Count == 0) continue;
+                    var share = assignment.Price / assignedFriends.Count;
                     foreach (var friend in assignedFriends)
                     {
                         if (!friendAmounts.ContainsKey(friend.Id))
@@ -495,7 +446,7 @@ namespace OurCheckSplitter.Api.Controllers
                             friendAmounts[friend.Id] = 0;
                             friendNames[friend.Id] = friend.Name ?? string.Empty;
                         }
-                        friendAmounts[friend.Id] += assignment.Price;
+                        friendAmounts[friend.Id] += share;
                     }
                 }
             }
@@ -549,8 +500,6 @@ namespace OurCheckSplitter.Api.Controllers
             await _context.SaveChangesAsync();
             return Ok(receipt);
         }
-
-       
 
     }
 }

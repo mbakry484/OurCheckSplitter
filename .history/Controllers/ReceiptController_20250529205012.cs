@@ -81,56 +81,6 @@ namespace OurCheckSplitter.Api.Controllers
 
             return Ok(receiptDtos);
         }
-         [HttpGet("{id}")]
-        public async Task<IActionResult> GetReceiptById(int id)
-        {
-            var receipt = await _context.Receipts
-                .Include(r => r.Friends)
-                .Include(r => r.Items)
-                .ThenInclude(i => i.Assignments)
-                .ThenInclude(a => a.FriendAssignments)
-                .ThenInclude(fa => fa.Friend)
-                .FirstOrDefaultAsync(r => r.Id == id);
-            if (receipt == null)
-                return NotFound("Receipt not found");
-
-            var receiptDto = new ReceiptResponseDto
-            {
-                Id = receipt.Id,
-                Name = receipt.Name,
-                Tax = receipt.Tax,
-                Tips = receipt.Tips,
-                Total = receipt.Total,
-                Friends = receipt.Friends.Select(f => new FriendResponseDto
-                {
-                    Id = f.Id,
-                    Name = f.Name
-                }).ToList(),
-                Items = receipt.Items.Select(item => new ItemResponseDto
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Quantity = item.Quantity,
-                    Price = item.Price,
-                    Assignments = item.Assignments
-                        .OrderBy(a => a.Id)
-                        .Select((assignment, index) => new ItemAssignmentResponseDto
-                        {
-                            Id = assignment.Id,
-                            Unitlabel = $"unit{index + 1}",
-                            Price = assignment.Price,
-                            Quantity = assignment.Quantity,
-                            AssignedFriends = assignment.FriendAssignments
-                                .Select(fa => new FriendResponseDto
-                                {
-                                    Id = fa.Friend.Id,
-                                    Name = fa.Friend.Name
-                                }).ToList()
-                        }).ToList()
-                }).ToList()
-            };
-            return Ok(receiptDto);
-        }
 
         //Create a new Receipt
         [HttpPost]
