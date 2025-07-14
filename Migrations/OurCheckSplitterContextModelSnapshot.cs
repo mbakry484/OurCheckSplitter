@@ -29,14 +29,9 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Property<int?>("ReceiptId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("ReceiptId1")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ReceiptId");
-
-                    b.HasIndex("ReceiptId1");
 
                     b.ToTable("Friends");
                 });
@@ -131,8 +126,15 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Property<double>("Tax")
                         .HasColumnType("REAL");
 
+                    b.Property<string>("TaxType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<double>("Tips")
                         .HasColumnType("REAL");
+
+                    b.Property<bool>("TipsIncludedInTotal")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double>("Total")
                         .HasColumnType("REAL");
@@ -144,14 +146,9 @@ namespace OurCheckSplitter.Api.Migrations
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Friend", b =>
                 {
-                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", null)
-                        .WithMany("Friends")
-                        .HasForeignKey("ReceiptId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("OurCheckSplitter.Api.Entities.Receipt", "Receipt")
-                        .WithMany()
-                        .HasForeignKey("ReceiptId1");
+                        .WithMany("Friends")
+                        .HasForeignKey("ReceiptId");
 
                     b.Navigation("Receipt");
                 });

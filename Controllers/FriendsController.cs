@@ -91,7 +91,7 @@ namespace OurCheckSplitter.Api.Controllers
             return Ok(friend);
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFriend(int id)
         {
             var TargetFriend = await _context.Friends.FindAsync(id);
@@ -103,9 +103,5 @@ namespace OurCheckSplitter.Api.Controllers
             await _context.SaveChangesAsync();
             return Ok();
         }
-
-
-
-
     }
 }

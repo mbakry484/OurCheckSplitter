@@ -4,8 +4,6 @@ using OurCheckSplitter.Api.Data;
 using OurCheckSplitter.Api.Controllers;
 using AutoMapper;
 using OurCheckSplitter.Api.Mappers;
-
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<OurCheckSplitterContext>(options =>
@@ -20,9 +18,9 @@ builder.Services.AddAutoMapper(typeof(ReceiptMapper));
 // Add CORS policy
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend",
+    options.AddPolicy("AllowAll",
         policy => policy
-            .WithOrigins("http://localhost:3000")
+            .AllowAnyOrigin()
             .AllowAnyHeader()
             .AllowAnyMethod());
 });
@@ -37,7 +35,11 @@ if (app.Environment.IsDevelopment())
 }
 
 // Use CORS before controllers
-app.UseCors("AllowFrontend");
+app.UseCors("AllowAll");
+
+// Add static files and default files support
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.MapControllers();
 app.Run();

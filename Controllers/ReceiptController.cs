@@ -24,7 +24,28 @@ namespace OurCheckSplitter.Api.Controllers
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
+        // Add the new endpoint for adding items
+        [HttpPost("{receiptId}/items")]
+        public async Task<IActionResult> AddItemToReceipt(int receiptId, [FromBody] ItemDto itemDto)
+        {
+            var receipt = await _context.Receipts.FindAsync(receiptId);
+            if (receipt == null)
+            {
+                return NotFound($"Receipt with ID {receiptId} not found");
+            }
 
+            var item = new Item
+            {
+                Name = itemDto.Name,
+                Price = itemDto.Price,
+                ReceiptId = receiptId
+            };
+
+            _context.Items.Add(item);
+            await _context.SaveChangesAsync();
+
+            return Ok(item);
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetAllReceipts()
@@ -143,13 +164,19 @@ namespace OurCheckSplitter.Api.Controllers
 
             var receipt = _mapper.Map<Receipt>(dto);
 
+            // Set default tax type if not specified
+            if (string.IsNullOrEmpty(receipt.TaxType))
+            {
+                receipt.TaxType = "amount";
+            }
+
             _context.Receipts.Add(receipt);
             await _context.SaveChangesAsync();
 
             return Ok(receipt);
         }
 
-        [HttpDelete]
+        [HttpDelete("{id}")]  // Fix the delete endpoint route
         public async Task<IActionResult> DeleteReceipt(int id)
         {
             // Set all related friends' ReceiptId to null
@@ -187,16 +214,16 @@ namespace OurCheckSplitter.Api.Controllers
             return Ok();
         }
 
-        [HttpPost("assign-friends")]
-        public async Task<IActionResult> AssignFriendsToReceipt([FromBody] AssignFriendsToReceiptDto dto)
+        [HttpPost("{id}/friends")]
+        public async Task<IActionResult> AssignFriendsToReceipt(int id, [FromBody] AssignFriendsToReceiptDto dto)
         {
             var receipt = await _context.Receipts
                 .Include(r => r.Friends)
-                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (receipt == null)
             {
-                return NotFound($"Receipt with ID {dto.ReceiptId} not found");
+                return NotFound($"Receipt with ID {id} not found");
             }
 
             foreach (var friendName in dto.FriendNames)

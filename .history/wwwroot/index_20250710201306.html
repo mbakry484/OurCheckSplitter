@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Check Splitter API Test</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 0 20px;
+      }
+      .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      button {
+        margin: 5px;
+        padding: 5px 10px;
+      }
+      input,
+      select {
+        margin: 5px;
+        padding: 5px;
+      }
+      .result {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #f5f5f5;
+        border-radius: 3px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Check Splitter API Test</h1>
+
+    <div class="section">
+      <h2>Friends</h2>
+      <div>
+        <input type="text" id="friendName" placeholder="Friend Name" />
+        <button onclick="createFriend()">Create Friend</button>
+      </div>
+      <div>
+        <button onclick="getAllFriends()">Get All Friends</button>
+      </div>
+      <div class="result" id="friendsResult"></div>
+    </div>
+
+    <div class="section">
+      <h2>Receipt</h2>
+      <div>
+        <input type="text" id="receiptName" placeholder="Receipt Name" />
+        <input type="number" id="receiptTax" placeholder="Tax" step="0.01" />
+        <input type="number" id="receiptTips" placeholder="Tips" step="0.01" />
+        <input
+          type="number"
+          id="receiptTotal"
+          placeholder="Total"
+          step="0.01"
+        />
+        <button onclick="createReceipt()">Create Receipt</button>
+      </div>
+      <div>
+        <button onclick="getAllReceipts()">Get All Receipts</button>
+      </div>
+      <div class="result" id="receiptsResult"></div>
+    </div>
+
+    <div class="section">
+      <h2>Items</h2>
+      <div>
+        <select id="receiptSelect"></select>
+        <input type="text" id="itemName" placeholder="Item Name" />
+        <input type="number" id="itemPrice" placeholder="Price" step="0.01" />
+        <button onclick="addItem()">Add Item</button>
+      </div>
+      <div class="result" id="itemsResult"></div>
+    </div>
+
+    <div class="section">
+      <h2>Assign Friends to Receipt</h2>
+      <div>
+        <select id="receiptSelectForFriends"></select>
+        <div id="friendCheckboxes"></div>
+        <button onclick="assignFriendsToReceipt()">Assign Friends</button>
+      </div>
+      <div class="result" id="assignmentResult"></div>
+    </div>
+
+    <script>
+      // Utility function to display results
+      function displayResult(elementId, data) {
+        document.getElementById(elementId).textContent =
+          typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      }
+
+      // Friends API
+      async function createFriend() {
+        const name = document.getElementById("friendName").value;
+        try {
+          const response = await fetch("/api/friends", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+          });
+          const result = await response.json();
+          displayResult("friendsResult", result);
+          await updateFriendsList();
+        } catch (error) {
+          displayResult("friendsResult", error.message);
+        }
+      }
+
+      async function getAllFriends() {
+        try {
+          const response = await fetch("/api/friends");
+          const friends = await response.json();
+          displayResult("friendsResult", friends);
+          return friends;
+        } catch (error) {
+          displayResult("friendsResult", error.message);
+          return [];
+        }
+      }
+
+      // Receipts API
+      async function createReceipt() {
+        const receipt = {
+          name: document.getElementById("receiptName").value,
+          tax: parseFloat(document.getElementById("receiptTax").value),
+          tips: parseFloat(document.getElementById("receiptTips").value),
+          total: parseFloat(document.getElementById("receiptTotal").value),
+        };
+        try {
+          const response = await fetch("/api/receipts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(receipt),
+          });
+          const result = await response.json();
+          displayResult("receiptsResult", result);
+          await updateReceiptsList();
+        } catch (error) {
+          displayResult("receiptsResult", error.message);
+        }
+      }
+
+      async function getAllReceipts() {
+        try {
+          const response = await fetch("/api/receipts");
+          const receipts = await response.json();
+          displayResult("receiptsResult", receipts);
+          return receipts;
+        } catch (error) {
+          displayResult("receiptsResult", error.message);
+          return [];
+        }
+      }
+
+      // Items API
+      async function addItem() {
+        const receiptId = document.getElementById("receiptSelect").value;
+        const item = {
+          name: document.getElementById("itemName").value,
+          price: parseFloat(document.getElementById("itemPrice").value),
+        };
+        try {
+          const response = await fetch(`/api/receipts/${receiptId}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item),
+          });
+          const result = await response.json();
+          displayResult("itemsResult", result);
+        } catch (error) {
+          displayResult("itemsResult", error.message);
+        }
+      }
+
+      // Friend Assignment API
+      async function assignFriendsToReceipt() {
+        const receiptId = document.getElementById(
+          "receiptSelectForFriends"
+        ).value;
+        const friendIds = Array.from(
+          document.querySelectorAll('input[name="friend"]:checked')
+        ).map((cb) => parseInt(cb.value));
+
+        try {
+          const response = await fetch(`/api/receipts/${receiptId}/friends`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ friendIds }),
+          });
+          const result = await response.json();
+          displayResult("assignmentResult", result);
+        } catch (error) {
+          displayResult("assignmentResult", error.message);
+        }
+      }
+
+      // Update UI helper functions
+      async function updateReceiptsList() {
+        const receipts = await getAllReceipts();
+        const receiptSelects = ["receiptSelect", "receiptSelectForFriends"];
+
+        receiptSelects.forEach((selectId) => {
+          const select = document.getElementById(selectId);
+          select.innerHTML = "";
+          receipts.forEach((receipt) => {
+            const option = document.createElement("option");
+            option.value = receipt.id;
+            option.textContent = `${receipt.name} ($${receipt.total})`;
+            select.appendChild(option);
+          });
+        });
+      }
+
+      async function updateFriendsList() {
+        const friends = await getAllFriends();
+        const container = document.getElementById("friendCheckboxes");
+        container.innerHTML = "";
+
+        friends.forEach((friend) => {
+          const div = document.createElement("div");
+          div.innerHTML = `
+                    <input type="checkbox" name="friend" value="${friend.id}" id="friend${friend.id}">
+                    <label for="friend${friend.id}">${friend.name}</label>
+                `;
+          container.appendChild(div);
+        });
+      }
+
+      // Initialize the UI
+      window.onload = async function () {
+        await updateReceiptsList();
+        await updateFriendsList();
+      };
+    </script>
+  </body>
+</html>

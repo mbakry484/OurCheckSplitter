@@ -1,12 +1,20 @@
 {
   "Version": 1,
-  "Hash": "OvQFjsdVaZtIw1LzsK1tJFU3OKY+SSjQ/jT1boDXhIc=",
+  "Hash": "LDe+lvE487nLo0htKBqkuk8/YJqifXjMmD6mxsWvezA=",
   "Source": "OurCheckSplitter.Api",
   "BasePath": "_content/OurCheckSplitter.Api",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "OurCheckSplitter.Api\\wwwroot",
+      "Source": "OurCheckSplitter.Api",
+      "ContentRoot": "C:\\Users\\DELL\\source\\repos\\OurCheckSplitter\\OurCheckSplitter.Api\\wwwroot\\",
+      "BasePath": "_content/OurCheckSplitter.Api",
+      "Pattern": "**"
+    }
+  ],
   "Assets": [],
   "Endpoints": []
 }
