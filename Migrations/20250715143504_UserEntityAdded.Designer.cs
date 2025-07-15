@@ -10,8 +10,8 @@ using OurCheckSplitter.Api.Data;
 namespace OurCheckSplitter.Api.Migrations
 {
     [DbContext(typeof(OurCheckSplitterContext))]
-    [Migration("20250714161821_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250715143504_UserEntityAdded")]
+    partial class UserEntityAdded
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -135,6 +135,9 @@ namespace OurCheckSplitter.Api.Migrations
 
                     b.Property<double>("Tips")
                         .HasColumnType("REAL");
+
+                    b.Property<bool>("TipsIncludedInTotal")
+                        .HasColumnType("INTEGER");
 
                     b.Property<double>("Total")
                         .HasColumnType("REAL");

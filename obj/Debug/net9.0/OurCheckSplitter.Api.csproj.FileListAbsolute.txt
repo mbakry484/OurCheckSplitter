@@ -186,3 +186,14 @@ C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\obj\Debug\net9.
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\src\package-lock.json
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\our-check-splitter-frontend\package-lock.json
 C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\OurCheckSplitter.Api.staticwebassets.runtime.json
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\config\ourchecksplitter-firebase-adminsdk-fbsvc-cf83270973.json
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\FirebaseAdmin.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Google.Api.Gax.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Google.Api.Gax.Rest.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Google.Apis.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Google.Apis.Auth.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Google.Apis.Core.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\Swashbuckle.AspNetCore.Annotations.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\System.Management.dll
+C:\Users\DELL\source\repos\OurCheckSplitter\OurCheckSplitter.Api\bin\Debug\net9.0\runtimes\win\lib\net7.0\System.Management.dll

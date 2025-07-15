@@ -5,7 +5,7 @@
 namespace OurCheckSplitter.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class UserEntityAdded : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,7 +20,8 @@ namespace OurCheckSplitter.Api.Migrations
                     Tax = table.Column<double>(type: "REAL", nullable: false),
                     TaxType = table.Column<string>(type: "TEXT", nullable: false),
                     Tips = table.Column<double>(type: "REAL", nullable: false),
-                    Total = table.Column<double>(type: "REAL", nullable: false)
+                    Total = table.Column<double>(type: "REAL", nullable: false),
+                    TipsIncludedInTotal = table.Column<bool>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
