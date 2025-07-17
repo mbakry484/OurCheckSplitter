@@ -13,10 +13,7 @@ namespace OurCheckSplitter.Api.Entities
         public int? ReceiptId { get; set; }
 
         [JsonIgnore]
-        public Receipt? Receipt { get; set; }
-
-        public Guid UserId { get; set; } // Foreign key to AppUser
-        public AppUser User { get; set; } = null!;
+        public Receipt? Receipt { get; set; }  
     }
 
 }

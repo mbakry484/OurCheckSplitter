@@ -240,13 +240,9 @@ namespace OurCheckSplitter.Api.Controllers
         [HttpPost("{id}/friends")]
         public async Task<IActionResult> AssignFriendsToReceipt(int id, [FromBody] AssignFriendsToReceiptDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
             var receipt = await _context.Receipts
                 .Include(r => r.Friends)
-                .FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (receipt == null)
             {
@@ -257,14 +253,14 @@ namespace OurCheckSplitter.Api.Controllers
             {
                 var normalizedName = friendName.Trim().ToLower();
 
-                // Check if friend already exists (case-insensitive) for this user
+                // Check if friend already exists (case-insensitive)
                 var existingFriend = await _context.Friends
-                    .FirstOrDefaultAsync(f => f.Name.ToLower() == normalizedName && f.UserId == user.Id);
+                    .FirstOrDefaultAsync(f => f.Name.ToLower() == normalizedName);
 
                 if (existingFriend == null)
                 {
                     // Create new friend if doesn't exist
-                    existingFriend = new Friend { Name = friendName.Trim(), UserId = user.Id };
+                    existingFriend = new Friend { Name = friendName.Trim() }; // Keep original case for display
                     _context.Friends.Add(existingFriend);
                     await _context.SaveChangesAsync();
                 }

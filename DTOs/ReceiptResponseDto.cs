@@ -7,6 +7,8 @@ namespace OurCheckSplitter.Api.DTOs
         public double Tax { get; set; }
         public double Tips { get; set; }
         public double Total { get; set; }
+        public string? TaxType { get; set; }
+        public bool TipsIncludedInTotal { get; set; }
         public List<FriendResponseDto> Friends { get; set; } = new();
         public List<ItemResponseDto> Items { get; set; } = new();
     }

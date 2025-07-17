@@ -9,7 +9,7 @@
         public double Tips { get; set; }
         public double Total { get; set; }
         public bool TipsIncludedInTotal { get; set; } = true;
-        public Guid UserId { get; set; } // Foreign key to AppUser
+        public Guid UserId { get; set; }
         public AppUser User { get; set; } = null!;
 
         public virtual List<Friend>? Friends { get; set; } = new();

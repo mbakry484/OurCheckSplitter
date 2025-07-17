@@ -21,9 +21,9 @@ namespace OurCheckSplitter.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateFriend([FromBody] CreateFriendDto dto)
+        public async Task<IActionResult> CreateFriend([FromBody] FriendDto dto)
         {
-            if (dto == null || string.IsNullOrWhiteSpace(dto.Name))
+            if (dto == null)
             {
                 return BadRequest("Name is required");
             }
@@ -39,15 +39,7 @@ namespace OurCheckSplitter.Api.Controllers
             };
             _context.Friends.Add(friend);
             await _context.SaveChangesAsync();
-
-            // Return a safe DTO
-            var friendDto = new FriendDto
-            {
-                Id = friend.Id,
-                Name = friend.Name ?? string.Empty,
-                Receipts = new List<ReceiptSummaryDto>()
-            };
-            return Ok(friendDto);
+            return Ok(friend);
         }
 
         [HttpGet]
@@ -99,13 +91,9 @@ namespace OurCheckSplitter.Api.Controllers
         }
 
         [HttpPut("edit-friend/{id}")]
-        public async Task<IActionResult> EditFriend(int id, [FromBody] CreateFriendDto dto)
+        public async Task<IActionResult> EditFriend(int id, [FromBody] FriendDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
-            var friend = await _context.Friends.FirstOrDefaultAsync(f => f.Id == id && f.UserId == user.Id);
+            var friend = await _context.Friends.FindAsync(id);
             if (friend == null)
                 return NotFound("Friend not found");
             if (!string.IsNullOrWhiteSpace(dto.Name))

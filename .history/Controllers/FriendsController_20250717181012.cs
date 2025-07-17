@@ -39,15 +39,7 @@ namespace OurCheckSplitter.Api.Controllers
             };
             _context.Friends.Add(friend);
             await _context.SaveChangesAsync();
-
-            // Return a safe DTO
-            var friendDto = new FriendDto
-            {
-                Id = friend.Id,
-                Name = friend.Name ?? string.Empty,
-                Receipts = new List<ReceiptSummaryDto>()
-            };
-            return Ok(friendDto);
+            return Ok(friend);
         }
 
         [HttpGet]

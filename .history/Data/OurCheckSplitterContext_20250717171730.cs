@@ -16,22 +16,10 @@ namespace OurCheckSplitter.Api.Data
         public DbSet<FriendAssignment> FriendAssignments { get; set; }
         public DbSet<AppUser> AppUsers { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            base.OnModelCreating(modelBuilder);
-            modelBuilder.Entity<Friend>()
-                .HasOne(f => f.User)
-                .WithMany(u => u.Friends)
-                .HasForeignKey(f => f.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Receipt>()
-                .HasOne(r => r.User)
-                .WithMany(u => u.Receipts)
-                .HasForeignKey(r => r.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        }
-    }
+
+    };
+
 
 
 }

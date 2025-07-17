@@ -24,14 +24,14 @@ namespace OurCheckSplitter.Api.Data
                 .WithMany(u => u.Friends)
                 .HasForeignKey(f => f.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-
             modelBuilder.Entity<Receipt>()
                 .HasOne(r => r.User)
                 .WithMany(u => u.Receipts)
                 .HasForeignKey(r => r.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
-    }
+    };
+
 
 
 }
