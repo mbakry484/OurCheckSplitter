@@ -315,13 +315,9 @@ namespace OurCheckSplitter.Api.Controllers
         [HttpPost("assign-items")]
         public async Task<IActionResult> AssignItemsToReceipt([FromBody] AssignItemsToReceiptDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
             var receipt = await _context.Receipts
                 .Include(r => r.Items)
-                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId && r.UserId == user.Id);
+                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId);
 
             if (receipt == null)
             {
@@ -375,16 +371,12 @@ namespace OurCheckSplitter.Api.Controllers
         [HttpPost("assign-friends-to-items")]
         public async Task<IActionResult> AssignFriendsToItems([FromBody] AssignFriendsToItemDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
             var receipt = await _context.Receipts
                 .Include(r => r.Items)
                 .ThenInclude(i => i.Assignments)
                 .ThenInclude(a => a.FriendAssignments)
                 .ThenInclude(fa => fa.Friend)
-                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId && r.UserId == user.Id);
+                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId);
 
             if (receipt == null)
             {
@@ -418,16 +410,12 @@ namespace OurCheckSplitter.Api.Controllers
                 // Get or create friends
                 foreach (var friendName in itemAssignment.FriendNames)
                 {
-                    var normalizedName = friendName.Trim().ToLower();
-
-                    // Check if friend already exists (case-insensitive) for this user
                     var friend = await _context.Friends
-                        .FirstOrDefaultAsync(f => f.Name.ToLower() == normalizedName && f.UserId == user.Id);
+                        .FirstOrDefaultAsync(f => f.Name == friendName);
 
                     if (friend == null)
                     {
-                        // Create new friend if doesn't exist
-                        friend = new Friend { Name = friendName.Trim(), UserId = user.Id };
+                        friend = new Friend { Name = friendName };
                         _context.Friends.Add(friend);
                         await _context.SaveChangesAsync();
                     }
@@ -490,16 +478,12 @@ namespace OurCheckSplitter.Api.Controllers
         [HttpPost("assign-friends-to-whole-item")]
         public async Task<IActionResult> AssignFriendsToWholeItem([FromBody] AssignFriendsToWholeItemDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
             var receipt = await _context.Receipts
                 .Include(r => r.Items)
                 .ThenInclude(i => i.Assignments)
                 .ThenInclude(a => a.FriendAssignments)
                 .ThenInclude(fa => fa.Friend)
-                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId && r.UserId == user.Id);
+                .FirstOrDefaultAsync(r => r.Id == dto.ReceiptId);
 
             if (receipt == null)
             {
@@ -530,20 +514,13 @@ namespace OurCheckSplitter.Api.Controllers
 
             foreach (var friendName in dto.FriendNames)
             {
-                var normalizedName = friendName.Trim().ToLower();
-
-                // Check if friend already exists (case-insensitive) for this user
-                var friend = await _context.Friends
-                    .FirstOrDefaultAsync(f => f.Name.ToLower() == normalizedName && f.UserId == user.Id);
-
+                var friend = await _context.Friends.FirstOrDefaultAsync(f => f.Name == friendName);
                 if (friend == null)
                 {
-                    // Create new friend if doesn't exist
-                    friend = new Friend { Name = friendName.Trim(), UserId = user.Id };
+                    friend = new Friend { Name = friendName };
                     _context.Friends.Add(friend);
                     await _context.SaveChangesAsync();
                 }
-
                 var friendAssignment = new FriendAssignment
                 {
                     Friend = friend,
@@ -640,11 +617,7 @@ namespace OurCheckSplitter.Api.Controllers
         [HttpPut("edit-receipt/{id}")]
         public async Task<IActionResult> EditReceipt(int id, [FromBody] ReceiptDto dto)
         {
-            var user = HttpContext.Items["User"] as AppUser;
-            if (user == null)
-                return Unauthorized();
-
-            var receipt = await _context.Receipts.FirstOrDefaultAsync(r => r.Id == id && r.UserId == user.Id);
+            var receipt = await _context.Receipts.FindAsync(id);
             if (receipt == null)
                 return NotFound("Receipt not found");
             if (!string.IsNullOrWhiteSpace(dto.Name))
@@ -653,21 +626,7 @@ namespace OurCheckSplitter.Api.Controllers
             receipt.Tips = dto.Tips;
             receipt.Total = dto.Total;
             await _context.SaveChangesAsync();
-
-            // Return a safe DTO to avoid object cycles
-            var receiptDto = new ReceiptResponseDto
-            {
-                Id = receipt.Id,
-                Name = receipt.Name,
-                Tax = receipt.Tax,
-                TaxType = receipt.TaxType,
-                Tips = receipt.Tips,
-                Total = receipt.Total,
-                TipsIncludedInTotal = receipt.TipsIncludedInTotal,
-                Friends = new List<FriendResponseDto>(),
-                Items = new List<ItemResponseDto>()
-            };
-            return Ok(receiptDto);
+            return Ok(receipt);
         }
 
 
