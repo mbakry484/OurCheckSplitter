@@ -8,6 +8,7 @@ import {
   Image,
   SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Friend {
@@ -27,7 +28,13 @@ interface Receipt {
   participants: string[]; // friend names
 }
 
-const HomeScreen = () => {
+interface HomeScreenProps {
+  navigation?: any;
+}
+
+const HomeScreen = ({ navigation }: HomeScreenProps) => {
+  const insets = useSafeAreaInsets();
+
   // Mock data - replace with actual data later
   const friends: Friend[] = [
     { id: '1', name: 'John', avatar: '👨', receipts: 5 },
@@ -114,6 +121,18 @@ const HomeScreen = () => {
 
   const totalYouPaid = 31.25;
 
+  const handleSeeAllFriends = () => {
+    if (navigation) {
+      navigation.navigate('Friends');
+    }
+  };
+
+  const handleFriendsNavigation = () => {
+    if (navigation) {
+      navigation.navigate('Friends');
+    }
+  };
+
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendItem}>
       <View style={styles.friendAvatar}>
@@ -168,7 +187,7 @@ const HomeScreen = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Friends</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={handleSeeAllFriends}>
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -184,26 +203,26 @@ const HomeScreen = () => {
         </View>
 
         {/* Totals Section */}
-        <View style={styles.totalsSection}>
+        <View style={[styles.totalsSection, { marginBottom: 100 + Math.max(insets.bottom, 0) }]}>
           <View style={styles.totalItem}>
             <Text style={styles.totalLabel}>Total You Paid</Text>
             <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
           </View>
-         
+
         </View>
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab}>
+      <TouchableOpacity style={[styles.fab, { bottom: 90 + Math.max(insets.bottom, 0) }]}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
 
       {/* Bottom Navigation Placeholder */}
-      <View style={styles.bottomNav}>
+      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={handleFriendsNavigation}>
           <Ionicons name="people-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -219,7 +238,6 @@ const HomeScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 15,
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
@@ -370,7 +388,6 @@ const styles = StyleSheet.create({
   },
   totalsSection: {
     marginTop: 20,
-    marginBottom: 100,
   },
   totalItem: {
     flexDirection: 'row',
@@ -403,7 +420,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 90,
     right: 20,
     width: 56,
     height: 56,
@@ -418,13 +434,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   bottomNav: {
-    marginBottom:0,
     flexDirection: 'row',
     backgroundColor: 'white',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
+    paddingBottom: 10,
   },
   navItem: {
     flex: 1,
