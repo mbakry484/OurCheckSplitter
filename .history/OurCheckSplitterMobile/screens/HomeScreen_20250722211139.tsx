@@ -204,12 +204,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
         {/* Recent Receipts Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Receipts</Text>
-            <TouchableOpacity onPress={handleViewAllReceipts}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>Recent Receipts</Text>
           {recentReceipts.slice(0, 5).map(renderReceipt)}
           {recentReceipts.length > 5 && (
             <TouchableOpacity style={styles.viewMoreButton} onPress={handleViewAllReceipts}>
@@ -220,7 +215,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </View>
 
         {/* Totals Section */}
-        <View style={[styles.totalsSection, { marginBottom: 20 + Math.max(insets.bottom, 0) }]}>
+        <View style={[styles.totalsSection, { marginBottom: 100 + Math.max(insets.bottom, 0) }]}>
           <View style={styles.totalItem}>
             <Text style={styles.totalLabel}>Total You Paid</Text>
             <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
@@ -230,7 +225,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { bottom: 80 + Math.max(insets.bottom, 0) }]}>
+      <TouchableOpacity style={[styles.fab, { bottom: 90 + Math.max(insets.bottom, 0) }]}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
 
@@ -450,7 +445,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

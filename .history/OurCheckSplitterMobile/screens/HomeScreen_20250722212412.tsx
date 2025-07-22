@@ -450,7 +450,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

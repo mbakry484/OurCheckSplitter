@@ -120,6 +120,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   ];
 
   const totalYouPaid = 31.25;
+  const averagePerReceipt = recentReceipts.length > 0 ? totalYouPaid / recentReceipts.length : 0;
 
   const handleSeeAllFriends = () => {
     if (navigation) {
@@ -450,7 +451,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
+  topSummaryCards: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  summaryNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

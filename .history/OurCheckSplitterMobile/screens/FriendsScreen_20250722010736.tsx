@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,9 @@ interface Friend {
   id: string;
   name: string;
   avatar: string;
-  receipts: string[]; // Array of receipt names
-  totalPaid: number; // Total amount this friend paid across all receipts
+  receipts: number;
+  totalOwed: number;
+  totalOwes: number;
 }
 
 interface FriendsScreenProps {
@@ -25,98 +26,18 @@ interface FriendsScreenProps {
 
 const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Extended mock data for friends
-  const handleGoBack = () => {
-    if (navigation) {
-      navigation.goBack();
-    }
-  };
-
-  const handleHomeNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Home');
-    }
-  };
-
-  const handleReceiptsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
-    }
-  };
-
   const friends: Friend[] = [
-    {
-      id: '1',
-      name: 'John',
-      avatar: '👨',
-      receipts: ['Dinner at Italian Place', 'Pizza Lunch', 'Gas Station', 'Breakfast at Cafe', 'Movie Night'],
-      totalPaid: 89.75
-    },
-    {
-      id: '2',
-      name: 'Sarah',
-      avatar: '👩',
-      receipts: ['Dinner at Italian Place', 'Gas Station', 'Movie Night'],
-      totalPaid: 45.20
-    },
-    {
-      id: '3',
-      name: 'Mike',
-      avatar: '👨‍💼',
-      receipts: ['Movie Night', 'Uber Ride', 'Lunch Meeting', 'Coffee Break', 'Team Dinner', 'Office Supplies', 'Taxi Ride', 'Snacks'],
-      totalPaid: 156.80
-    },
-    {
-      id: '4',
-      name: 'Emma',
-      avatar: '👩‍🦰',
-      receipts: ['Groceries', 'Pizza Lunch', 'Breakfast at Cafe'],
-      totalPaid: 32.15
-    },
-    {
-      id: '5',
-      name: 'Alex',
-      avatar: '👨‍🎓',
-      receipts: ['Coffee with Alex', 'Pizza Lunch', 'Uber Ride'],
-      totalPaid: 28.90
-    },
-    {
-      id: '6',
-      name: 'Lisa',
-      avatar: '👩‍💻',
-      receipts: ['Shopping Trip', 'Lunch Date', 'Coffee Meeting', 'Book Store'],
-      totalPaid: 67.45
-    },
-    {
-      id: '7',
-      name: 'David',
-      avatar: '👨‍🔬',
-      receipts: ['Lab Equipment', 'Research Dinner', 'Conference Lunch', 'Hotel Stay', 'Airport Taxi', 'Breakfast'],
-      totalPaid: 234.60
-    },
-    {
-      id: '8',
-      name: 'Kate',
-      avatar: '👩‍🎨',
-      receipts: ['Art Supplies', 'Gallery Visit', 'Creative Workshop'],
-      totalPaid: 78.30
-    },
+    { id: '1', name: 'John', avatar: '👨', receipts: 5, totalOwed: 15.25, totalOwes: 8.50 },
+    { id: '2', name: 'Sarah', avatar: '👩', receipts: 3, totalOwed: 22.75, totalOwes: 12.00 },
+    { id: '3', name: 'Mike', avatar: '👨‍💼', receipts: 8, totalOwed: 5.50, totalOwes: 18.25 },
+    { id: '4', name: 'Emma', avatar: '👩‍🦰', receipts: 1, totalOwed: 0.00, totalOwes: 14.45 },
+    { id: '5', name: 'Alex', avatar: '👨‍🎓', receipts: 2, totalOwed: 9.25, totalOwes: 5.75 },
+    { id: '6', name: 'Lisa', avatar: '👩‍💻', receipts: 4, totalOwed: 12.80, totalOwes: 0.00 },
+    { id: '7', name: 'David', avatar: '👨‍🔬', receipts: 6, totalOwed: 7.90, totalOwes: 11.30 },
+    { id: '8', name: 'Kate', avatar: '👩‍🎨', receipts: 3, totalOwed: 16.40, totalOwes: 3.20 },
   ];
-
-  // Filter friends based on search query
-  const filteredFriends = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return friends;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return friends.filter(friend =>
-      friend.name.toLowerCase().includes(query) ||
-      friend.receipts.some(receipt => receipt.toLowerCase().includes(query))
-    );
-  }, [searchQuery, friends]);
 
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendCard}>
@@ -126,18 +47,23 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         </View>
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{friend.name}</Text>
-          <Text style={styles.friendReceiptsCount}>{friend.receipts.length} receipts</Text>
-          <Text style={styles.friendReceiptsList}>
-            {friend.receipts.slice(0, 2).join(', ')}
-            {friend.receipts.length > 2 && `, +${friend.receipts.length - 2} more`}
-          </Text>
+          <Text style={styles.friendReceipts}>{friend.receipts} receipts</Text>
         </View>
       </View>
       <View style={styles.friendRight}>
-        <Text style={styles.totalPaidLabel}>Total Paid</Text>
-        <Text style={styles.totalPaidAmount}>
-          ${friend.totalPaid.toFixed(2)}
-        </Text>
+        {friend.totalOwed > 0 && (
+          <Text style={styles.owedAmount}>
+            owes you ${friend.totalOwed.toFixed(2)}
+          </Text>
+        )}
+        {friend.totalOwes > 0 && (
+          <Text style={styles.owesAmount}>
+            you owe ${friend.totalOwes.toFixed(2)}
+          </Text>
+        )}
+        {friend.totalOwed === 0 && friend.totalOwes === 0 && (
+          <Text style={styles.settledAmount}>settled up</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -146,9 +72,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Friends</Text>
         <TouchableOpacity style={styles.addButton}>
           <Ionicons name="person-add-outline" size={24} color="#007AFF" />
@@ -162,40 +85,25 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
           style={styles.searchInput}
           placeholder="Search friends..."
           placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
         />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Friends List */}
         <View style={styles.friendsList}>
-          {filteredFriends.length > 0 ? (
-            filteredFriends.map(renderFriend)
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>
-                {searchQuery.trim() ? 'No friends found' : 'No friends yet'}
-              </Text>
-              {searchQuery.trim() && (
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for a different name or receipt
-                </Text>
-              )}
-            </View>
-          )}
+          {friends.map(renderFriend)}
         </View>
       </ScrollView>
 
       {/* Bottom Navigation Placeholder */}
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-        <TouchableOpacity style={styles.navItem} onPress={handleHomeNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -226,9 +134,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
-  },
-  backButton: {
-    padding: 5,
   },
   addButton: {
     padding: 5,
@@ -304,44 +209,27 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
-  friendReceiptsCount: {
+  friendReceipts: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
-  },
-  friendReceiptsList: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
   },
   friendRight: {
     alignItems: 'flex-end',
   },
-  totalPaidLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  totalPaidAmount: {
-    fontSize: 16,
+  owedAmount: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#4ECDC4',
   },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  noResultsText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
+  owesAmount: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B6B',
+  },
+  settledAmount: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#999',
-    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',

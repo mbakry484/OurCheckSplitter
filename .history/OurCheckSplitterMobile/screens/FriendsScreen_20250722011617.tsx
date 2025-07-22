@@ -40,12 +40,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
     }
   };
 
-  const handleReceiptsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
-    }
-  };
-
   const friends: Friend[] = [
     {
       id: '1',
@@ -170,20 +164,7 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Friends List */}
         <View style={styles.friendsList}>
-          {filteredFriends.length > 0 ? (
-            filteredFriends.map(renderFriend)
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>
-                {searchQuery.trim() ? 'No friends found' : 'No friends yet'}
-              </Text>
-              {searchQuery.trim() && (
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for a different name or receipt
-                </Text>
-              )}
-            </View>
-          )}
+          {filteredFriends.map(renderFriend)}
         </View>
       </ScrollView>
 
@@ -195,7 +176,7 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -326,22 +307,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#4ECDC4',
-  },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  noResultsText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',

@@ -189,6 +189,25 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Summary Cards */}
+        <View style={styles.topSummaryCards}>
+          <View style={styles.summaryCard}>
+            <Ionicons name="receipt-outline" size={20} color="#007AFF" />
+            <Text style={styles.summaryNumber}>{recentReceipts.length}</Text>
+            <Text style={styles.summaryLabel}>Total Receipts</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Ionicons name="people-outline" size={20} color="#4ECDC4" />
+            <Text style={styles.summaryNumber}>{friends.length}</Text>
+            <Text style={styles.summaryLabel}>Friends</Text>
+          </View>
+          <View style={styles.summaryCard}>
+            <Ionicons name="calendar-outline" size={20} color="#FF6B6B" />
+            <Text style={styles.summaryNumber}>Oct</Text>
+            <Text style={styles.summaryLabel}>This Month</Text>
+          </View>
+        </View>
+
         {/* Friends Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -224,6 +243,25 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           <View style={styles.totalItem}>
             <Text style={styles.totalLabel}>Total You Paid</Text>
             <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
+          </View>
+
+          {/* Summary Cards */}
+          <View style={styles.summaryCards}>
+            <View style={styles.summaryCard}>
+              <Ionicons name="receipt-outline" size={20} color="#007AFF" />
+              <Text style={styles.summaryNumber}>{recentReceipts.length}</Text>
+              <Text style={styles.summaryLabel}>Total Receipts</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Ionicons name="people-outline" size={20} color="#4ECDC4" />
+              <Text style={styles.summaryNumber}>{friends.length}</Text>
+              <Text style={styles.summaryLabel}>Friends</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Ionicons name="calendar-outline" size={20} color="#FF6B6B" />
+              <Text style={styles.summaryNumber}>Oct</Text>
+              <Text style={styles.summaryLabel}>This Month</Text>
+            </View>
           </View>
 
         </View>
@@ -450,7 +488,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
+  summaryCards: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 15,
+  },
+  summaryCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  summaryNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+  },
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

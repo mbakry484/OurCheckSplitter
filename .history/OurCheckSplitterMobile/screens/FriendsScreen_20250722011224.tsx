@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ interface FriendsScreenProps {
 
 const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Extended mock data for friends
   const handleGoBack = () => {
@@ -37,12 +36,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
   const handleHomeNavigation = () => {
     if (navigation) {
       navigation.navigate('Home');
-    }
-  };
-
-  const handleReceiptsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
     }
   };
 
@@ -105,19 +98,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
     },
   ];
 
-  // Filter friends based on search query
-  const filteredFriends = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return friends;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return friends.filter(friend =>
-      friend.name.toLowerCase().includes(query) ||
-      friend.receipts.some(receipt => receipt.toLowerCase().includes(query))
-    );
-  }, [searchQuery, friends]);
-
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendCard}>
       <View style={styles.friendLeft}>
@@ -126,18 +106,23 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         </View>
         <View style={styles.friendInfo}>
           <Text style={styles.friendName}>{friend.name}</Text>
-          <Text style={styles.friendReceiptsCount}>{friend.receipts.length} receipts</Text>
-          <Text style={styles.friendReceiptsList}>
-            {friend.receipts.slice(0, 2).join(', ')}
-            {friend.receipts.length > 2 && `, +${friend.receipts.length - 2} more`}
-          </Text>
+          <Text style={styles.friendReceipts}>{friend.receipts} receipts</Text>
         </View>
       </View>
       <View style={styles.friendRight}>
-        <Text style={styles.totalPaidLabel}>Total Paid</Text>
-        <Text style={styles.totalPaidAmount}>
-          ${friend.totalPaid.toFixed(2)}
-        </Text>
+        {friend.totalOwed > 0 && (
+          <Text style={styles.owedAmount}>
+            owes you ${friend.totalOwed.toFixed(2)}
+          </Text>
+        )}
+        {friend.totalOwes > 0 && (
+          <Text style={styles.owesAmount}>
+            you owe ${friend.totalOwes.toFixed(2)}
+          </Text>
+        )}
+        {friend.totalOwed === 0 && friend.totalOwes === 0 && (
+          <Text style={styles.settledAmount}>settled up</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -162,28 +147,13 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
           style={styles.searchInput}
           placeholder="Search friends..."
           placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
         />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Friends List */}
         <View style={styles.friendsList}>
-          {filteredFriends.length > 0 ? (
-            filteredFriends.map(renderFriend)
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>
-                {searchQuery.trim() ? 'No friends found' : 'No friends yet'}
-              </Text>
-              {searchQuery.trim() && (
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for a different name or receipt
-                </Text>
-              )}
-            </View>
-          )}
+          {friends.map(renderFriend)}
         </View>
       </ScrollView>
 
@@ -195,7 +165,7 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -304,44 +274,27 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
-  friendReceiptsCount: {
+  friendReceipts: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
-  },
-  friendReceiptsList: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
   },
   friendRight: {
     alignItems: 'flex-end',
   },
-  totalPaidLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 2,
-  },
-  totalPaidAmount: {
-    fontSize: 16,
+  owedAmount: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#4ECDC4',
   },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  noResultsText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
+  owesAmount: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#FF6B6B',
+  },
+  settledAmount: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#999',
-    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',

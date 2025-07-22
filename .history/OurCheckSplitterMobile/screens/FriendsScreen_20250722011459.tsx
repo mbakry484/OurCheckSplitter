@@ -25,7 +25,6 @@ interface FriendsScreenProps {
 
 const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
   const insets = useSafeAreaInsets();
-  const [searchQuery, setSearchQuery] = useState('');
 
   // Extended mock data for friends
   const handleGoBack = () => {
@@ -37,12 +36,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
   const handleHomeNavigation = () => {
     if (navigation) {
       navigation.navigate('Home');
-    }
-  };
-
-  const handleReceiptsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
     }
   };
 
@@ -105,19 +98,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
     },
   ];
 
-  // Filter friends based on search query
-  const filteredFriends = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return friends;
-    }
-
-    const query = searchQuery.toLowerCase();
-    return friends.filter(friend =>
-      friend.name.toLowerCase().includes(query) ||
-      friend.receipts.some(receipt => receipt.toLowerCase().includes(query))
-    );
-  }, [searchQuery, friends]);
-
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendCard}>
       <View style={styles.friendLeft}>
@@ -162,28 +142,13 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
           style={styles.searchInput}
           placeholder="Search friends..."
           placeholderTextColor="#999"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
         />
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Friends List */}
         <View style={styles.friendsList}>
-          {filteredFriends.length > 0 ? (
-            filteredFriends.map(renderFriend)
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>
-                {searchQuery.trim() ? 'No friends found' : 'No friends yet'}
-              </Text>
-              {searchQuery.trim() && (
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for a different name or receipt
-                </Text>
-              )}
-            </View>
-          )}
+          {friends.map(renderFriend)}
         </View>
       </ScrollView>
 
@@ -195,7 +160,7 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -326,22 +291,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#4ECDC4',
-  },
-  noResultsContainer: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
-  },
-  noResultsText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#666',
-    marginBottom: 8,
-  },
-  noResultsSubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',

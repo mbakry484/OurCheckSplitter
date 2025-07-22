@@ -226,6 +226,25 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
           </View>
 
+          {/* Summary Cards */}
+          <View style={styles.summaryCards}>
+            <View style={styles.summaryCard}>
+              <Ionicons name="receipt-outline" size={20} color="#007AFF" />
+              <Text style={styles.summaryNumber}>{recentReceipts.length}</Text>
+              <Text style={styles.summaryLabel}>Total Receipts</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Ionicons name="people-outline" size={20} color="#4ECDC4" />
+              <Text style={styles.summaryNumber}>{friends.length}</Text>
+              <Text style={styles.summaryLabel}>Friends</Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <Ionicons name="calendar-outline" size={20} color="#FF6B6B" />
+              <Text style={styles.summaryNumber}>Oct</Text>
+              <Text style={styles.summaryLabel}>This Month</Text>
+            </View>
+          </View>
+
         </View>
       </ScrollView>
 
@@ -450,7 +469,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

@@ -230,7 +230,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { bottom: 80 + Math.max(insets.bottom, 0) }]}>
+      <TouchableOpacity style={[styles.fab, { bottom: 90 + Math.max(insets.bottom, 0) }]}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
 
@@ -450,7 +450,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',

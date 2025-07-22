@@ -8,7 +8,6 @@ import {
   Image,
   SafeAreaView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Friend {
@@ -28,13 +27,7 @@ interface Receipt {
   participants: string[]; // friend names
 }
 
-interface HomeScreenProps {
-  navigation?: any;
-}
-
-const HomeScreen = ({ navigation }: HomeScreenProps) => {
-  const insets = useSafeAreaInsets();
-
+const HomeScreen = () => {
   // Mock data - replace with actual data later
   const friends: Friend[] = [
     { id: '1', name: 'John', avatar: '👨', receipts: 5 },
@@ -121,24 +114,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   const totalYouPaid = 31.25;
 
-  const handleSeeAllFriends = () => {
-    if (navigation) {
-      navigation.navigate('Friends');
-    }
-  };
-
-  const handleFriendsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Friends');
-    }
-  };
-
-  const handleViewAllReceipts = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
-    }
-  };
-
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendItem}>
       <View style={styles.friendAvatar}>
@@ -193,7 +168,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Friends</Text>
-            <TouchableOpacity onPress={handleSeeAllFriends}>
+            <TouchableOpacity>
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -204,45 +179,34 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
         {/* Recent Receipts Section */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Receipts</Text>
-            <TouchableOpacity onPress={handleViewAllReceipts}>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          {recentReceipts.slice(0, 5).map(renderReceipt)}
-          {recentReceipts.length > 5 && (
-            <TouchableOpacity style={styles.viewMoreButton} onPress={handleViewAllReceipts}>
-              <Text style={styles.viewMoreText}>View More ({recentReceipts.length - 5} more)</Text>
-              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
-            </TouchableOpacity>
-          )}
+          <Text style={styles.sectionTitle}>Recent Receipts</Text>
+          {recentReceipts.map(renderReceipt)}
         </View>
 
         {/* Totals Section */}
-        <View style={[styles.totalsSection, { marginBottom: 20 + Math.max(insets.bottom, 0) }]}>
+        <View style={styles.totalsSection}>
           <View style={styles.totalItem}>
             <Text style={styles.totalLabel}>Total You Paid</Text>
             <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
           </View>
-
+         
         </View>
       </ScrollView>
 
       {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { bottom: 80 + Math.max(insets.bottom, 0) }]}>
+      <TouchableOpacity style={styles.fab}>
         <Ionicons name="add" size={24} color="white" />
       </TouchableOpacity>
 
       {/* Bottom Navigation Placeholder */}
-      <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+      <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="home" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleFriendsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people-outline" size={24} color="#999" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleViewAllReceipts}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
@@ -255,6 +219,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
 const styles = StyleSheet.create({
   container: {
+    height: 1 ,
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
@@ -395,26 +360,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginRight: 5,
   },
-  viewMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'white',
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  viewMoreText: {
-    fontSize: 14,
-    color: '#007AFF',
-    fontWeight: '500',
-    marginRight: 5,
-  },
   receiptRight: {
     justifyContent: 'center',
     alignItems: 'flex-end',
@@ -425,6 +370,7 @@ const styles = StyleSheet.create({
   },
   totalsSection: {
     marginTop: 20,
+    marginBottom: 100,
   },
   totalItem: {
     flexDirection: 'row',
@@ -450,7 +396,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-
   totalAmountOwed: {
     fontSize: 18,
     fontWeight: '600',
@@ -458,6 +403,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
+    bottom: 90,
     right: 20,
     width: 56,
     height: 56,
@@ -472,13 +418,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   bottomNav: {
+    marginBottom:0,
     flexDirection: 'row',
     backgroundColor: 'white',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
-    paddingBottom: 10,
   },
   navItem: {
     flex: 1,

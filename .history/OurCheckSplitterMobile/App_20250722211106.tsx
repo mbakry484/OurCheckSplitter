@@ -17,7 +17,6 @@ export default function App() {
       >
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Friends" component={FriendsScreen} />
-        <Stack.Screen name="Receipts" component={ReceiptsScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>

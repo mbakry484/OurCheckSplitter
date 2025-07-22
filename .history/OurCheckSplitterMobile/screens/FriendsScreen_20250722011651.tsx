@@ -40,12 +40,6 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
     }
   };
 
-  const handleReceiptsNavigation = () => {
-    if (navigation) {
-      navigation.navigate('Receipts');
-    }
-  };
-
   const friends: Friend[] = [
     {
       id: '1',
@@ -195,7 +189,7 @@ const FriendsScreen = ({ navigation }: FriendsScreenProps) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="people" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
+        <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
