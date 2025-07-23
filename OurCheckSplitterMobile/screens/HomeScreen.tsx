@@ -12,11 +12,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+interface FriendReceipt {
+  id: string;
+  title: string;
+  date: string;
+  totalAmount: number;
+  friendPaidAmount: number;
+  participants: string[];
+}
+
 interface Friend {
   id: string;
   name: string;
   avatar: string;
-  receipts: number;
+  receipts: string[]; // Array of receipt names
+  totalPaid: number; // Total amount this friend paid across all receipts
+  detailedReceipts?: FriendReceipt[]; // Detailed receipt information
 }
 
 interface Receipt {
@@ -38,13 +49,75 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const fabAnimation = useState(new Animated.Value(0))[0];
 
-  // Mock data - replace with actual data later
+  // Mock data - replace with actual data later (matching FriendsScreen data)
   const friends: Friend[] = [
-    { id: '1', name: 'John', avatar: '👨', receipts: 5 },
-    { id: '2', name: 'Sarah', avatar: '👩', receipts: 9 },
-    { id: '3', name: 'Mike', avatar: '👨‍💼', receipts: 8 },
-    { id: '4', name: 'Emma', avatar: '👩‍🦰', receipts: 1 },
-    { id: '5', name: 'Alex', avatar: '👨‍🎓', receipts: 3 },
+    {
+      id: '1',
+      name: 'John',
+      avatar: '👨',
+      receipts: ['Dinner at Italian Place', 'Pizza Lunch', 'Gas Station', 'Breakfast at Cafe', 'Movie Night'],
+      totalPaid: 89.75,
+      detailedReceipts: [
+        { id: '1', title: 'Dinner at Italian Place', date: 'Oct 30, 2023', totalAmount: 51.00, friendPaidAmount: 25.50, participants: ['You', 'Sarah'] },
+        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.92, participants: ['You', 'Emma', 'Alex'] },
+        { id: '6', title: 'Gas Station', date: 'Oct 18, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'Sarah'] },
+        { id: '7', title: 'Breakfast at Cafe', date: 'Oct 15, 2023', totalAmount: 28.90, friendPaidAmount: 14.45, participants: ['You', 'Emma'] },
+        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 16.28, participants: ['You', 'Sarah', 'Mike'] },
+      ]
+    },
+    {
+      id: '2',
+      name: 'Sarah',
+      avatar: '👩',
+      receipts: ['Dinner at Italian Place', 'Gas Station', 'Movie Night'],
+      totalPaid: 45.20,
+      detailedReceipts: [
+        { id: '1', title: 'Dinner at Italian Place', date: 'Oct 30, 2023', totalAmount: 51.00, friendPaidAmount: 25.50, participants: ['You', 'John'] },
+        { id: '6', title: 'Gas Station', date: 'Oct 18, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'John'] },
+        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 16.00, participants: ['You', 'John', 'Mike'] },
+      ]
+    },
+    {
+      id: '3',
+      name: 'Mike',
+      avatar: '👨‍💼',
+      receipts: ['Movie Night', 'Uber Ride', 'Lunch Meeting', 'Coffee Break', 'Team Dinner', 'Office Supplies', 'Taxi Ride', 'Snacks'],
+      totalPaid: 156.80,
+      detailedReceipts: [
+        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 15.72, participants: ['You', 'John', 'Sarah'] },
+        { id: '8', title: 'Uber Ride', date: 'Oct 12, 2023', totalAmount: 18.50, friendPaidAmount: 9.25, participants: ['You', 'Alex'] },
+        { id: '9', title: 'Lunch Meeting', date: 'Oct 10, 2023', totalAmount: 67.80, friendPaidAmount: 22.60, participants: ['You', 'Sarah', 'Lisa'] },
+        { id: '10', title: 'Coffee Break', date: 'Oct 8, 2023', totalAmount: 15.40, friendPaidAmount: 7.70, participants: ['You', 'Emma'] },
+        { id: '11', title: 'Team Dinner', date: 'Oct 5, 2023', totalAmount: 89.50, friendPaidAmount: 29.83, participants: ['You', 'Lisa', 'David'] },
+        { id: '12', title: 'Office Supplies', date: 'Oct 3, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'Lisa'] },
+        { id: '13', title: 'Taxi Ride', date: 'Sep 30, 2023', totalAmount: 25.80, friendPaidAmount: 12.90, participants: ['You', 'Alex'] },
+        { id: '14', title: 'Snacks', date: 'Sep 28, 2023', totalAmount: 32.40, friendPaidAmount: 16.20, participants: ['You', 'Emma'] },
+      ]
+    },
+    {
+      id: '4',
+      name: 'Emma',
+      avatar: '👩‍🦰',
+      receipts: ['Groceries', 'Pizza Lunch', 'Breakfast at Cafe'],
+      totalPaid: 32.15,
+      detailedReceipts: [
+        { id: '2', title: 'Groceries', date: 'Oct 29, 2023', totalAmount: 25.98, friendPaidAmount: 12.99, participants: ['You'] },
+        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.91, participants: ['You', 'John', 'Alex'] },
+        { id: '7', title: 'Breakfast at Cafe', date: 'Oct 15, 2023', totalAmount: 28.90, friendPaidAmount: 14.45, participants: ['You', 'John'] },
+      ]
+    },
+    {
+      id: '5',
+      name: 'Alex',
+      avatar: '👨‍🎓',
+      receipts: ['Coffee with Alex', 'Pizza Lunch', 'Uber Ride'],
+      totalPaid: 28.90,
+      detailedReceipts: [
+        { id: '3', title: 'Coffee with Alex', date: 'Oct 24, 2023', totalAmount: 11.50, friendPaidAmount: 5.75, participants: ['You'] },
+        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.92, participants: ['You', 'John', 'Emma'] },
+        { id: '8', title: 'Uber Ride', date: 'Oct 12, 2023', totalAmount: 18.50, friendPaidAmount: 9.25, participants: ['You', 'Mike'] },
+      ]
+    },
   ];
 
   const recentReceipts: Receipt[] = [
@@ -170,13 +243,19 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     toggleFabMenu();
   };
 
+  const handleFriendPress = (friend: Friend) => {
+    if (navigation) {
+      navigation.navigate('Friends', { selectedFriend: friend });
+    }
+  };
+
   const renderFriend = (friend: Friend) => (
-    <TouchableOpacity key={friend.id} style={styles.friendItem}>
+    <TouchableOpacity key={friend.id} style={styles.friendItem} onPress={() => handleFriendPress(friend)}>
       <View style={styles.friendAvatar}>
         <Text style={styles.avatarText}>{friend.avatar}</Text>
       </View>
       <Text style={styles.friendName}>{friend.name}</Text>
-      <Text style={styles.friendReceipts}>{friend.receipts} Receipts</Text>
+      <Text style={styles.friendReceipts}>{friend.receipts.length} Receipts</Text>
     </TouchableOpacity>
   );
 
@@ -391,7 +470,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingTop:40,
+    paddingTop: 50,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
