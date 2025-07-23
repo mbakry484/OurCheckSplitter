@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   SafeAreaView,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,6 +35,8 @@ interface HomeScreenProps {
 
 const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const insets = useSafeAreaInsets();
+  const [fabMenuOpen, setFabMenuOpen] = useState(false);
+  const fabAnimation = useState(new Animated.Value(0))[0];
 
   // Mock data - replace with actual data later
   const friends: Friend[] = [
@@ -139,6 +142,34 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  const toggleFabMenu = () => {
+    const toValue = fabMenuOpen ? 0 : 1;
+
+    Animated.spring(fabAnimation, {
+      toValue,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 8,
+    }).start();
+
+    setFabMenuOpen(!fabMenuOpen);
+  };
+
+  const handleMicrophonePress = () => {
+    console.log('Microphone pressed');
+    toggleFabMenu();
+  };
+
+  const handleChatPress = () => {
+    console.log('Chat pressed');
+    toggleFabMenu();
+  };
+
+  const handleManualEntryPress = () => {
+    console.log('Manual entry pressed');
+    toggleFabMenu();
+  };
+
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendItem}>
       <View style={styles.friendAvatar}>
@@ -229,10 +260,111 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         </View>
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity style={[styles.fab, { bottom: 80 + Math.max(insets.bottom, 0) }]}>
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      {/* Floating Action Button Menu */}
+      <View style={[styles.fabContainer, { bottom: 80 + Math.max(insets.bottom, 0) }]}>
+        {/* Menu Items */}
+        <Animated.View
+          style={[
+            styles.fabMenuItem,
+            {
+              transform: [
+                {
+                  translateY: fabAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -150],
+                  }),
+                },
+                {
+                  scale: fabAnimation.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 0.8, 1],
+                  }),
+                },
+              ],
+              opacity: fabAnimation,
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.fabMenuButton} onPress={handleMicrophonePress}>
+            <Ionicons name="mic-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.fabMenuItem,
+            {
+              transform: [
+                {
+                  translateY: fabAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -100],
+                  }),
+                },
+                {
+                  scale: fabAnimation.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 0.8, 1],
+                  }),
+                },
+              ],
+              opacity: fabAnimation,
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.fabMenuButton} onPress={handleChatPress}>
+            <Ionicons name="chatbubble-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.fabMenuItem,
+            {
+              transform: [
+                {
+                  translateY: fabAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -50],
+                  }),
+                },
+                {
+                  scale: fabAnimation.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [0, 0.8, 1],
+                  }),
+                },
+              ],
+              opacity: fabAnimation,
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.fabMenuButton} onPress={handleManualEntryPress}>
+            <Ionicons name="create-outline" size={20} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Main FAB */}
+        <Animated.View
+          style={[
+            styles.fab,
+            {
+              transform: [
+                {
+                  rotate: fabAnimation.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ['0deg', '45deg'],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity style={styles.fabButton} onPress={toggleFabMenu}>
+            <Ionicons name="add" size={24} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
 
       {/* Bottom Navigation Placeholder */}
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -456,12 +588,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4ECDC4',
   },
-  fab: {
+  fabContainer: {
     position: 'absolute',
     right: 20,
+    alignItems: 'center',
+  },
+  fab: {
     width: 56,
     height: 56,
     borderRadius: 28,
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  fabButton: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 28,
+  },
+  fabMenuItem: {
+    position: 'absolute',
+    alignItems: 'center',
+  },
+  fabMenuButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
