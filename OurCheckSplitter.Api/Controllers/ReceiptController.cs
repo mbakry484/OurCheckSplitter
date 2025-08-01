@@ -650,8 +650,10 @@ namespace OurCheckSplitter.Api.Controllers
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 receipt.Name = dto.Name;
             receipt.Tax = dto.Tax;
+            receipt.TaxType = dto.TaxType;
             receipt.Tips = dto.Tips;
             receipt.Total = dto.Total;
+            receipt.TipsIncludedInTotal = dto.TipsIncludedInTotal;
             await _context.SaveChangesAsync();
 
             // Return a safe DTO to avoid object cycles

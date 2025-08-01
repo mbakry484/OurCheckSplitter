@@ -62,7 +62,7 @@ namespace OurCheckSplitter.Api.Controllers
             double taxPercentage = 0;
             decimal totalItemAmount = friendAmounts.Values.Sum();
             decimal totalTips = (decimal)receipt.Tips;
-            var friendCount = receipt.Friends.Count;
+            var friendCount = receipt.Friends?.Count ?? 0;
             bool tipsIncluded = receipt.TipsIncludedInTotal;
             decimal subtotal;
             if (tipsIncluded)
@@ -94,17 +94,7 @@ namespace OurCheckSplitter.Api.Controllers
                 friendAmounts[friendId] = itemAmount + taxAmount;
             }
 
-            // Add tips if not included in total
-            if (!tipsIncluded && friendCount > 0)
-            {
-                var tipsPerFriend = totalTips / friendCount;
-                foreach (var friendId in friendAmounts.Keys.ToList())
-                {
-                    friendAmounts[friendId] += tipsPerFriend;
-                }
-            }
-
-            // Prepare result and round each friend's amount
+            // Prepare result and round each friend's amount (WITHOUT tips for validation)
             var result = friendAmounts.Select(kvp => new FriendWithAmountDto
             {
                 Id = kvp.Key,
@@ -112,35 +102,47 @@ namespace OurCheckSplitter.Api.Controllers
                 AmountToPay = Math.Round(kvp.Value, 2)
             }).ToList();
 
-            // Ensure the sum matches the receipt total (allow for small rounding error)
+            // Calculate the expected receipt total for validation 
+            // If tips are included in total, subtract them for validation; otherwise use full total
+            var expectedReceiptTotal = tipsIncluded ? (decimal)receipt.Total - totalTips : (decimal)receipt.Total;
             var totalCalculated = result.Sum(f => f.AmountToPay ?? 0);
-            var receiptTotal = (decimal)receipt.Total;
             const decimal tolerance = 3.00m; // $3.00 tolerance
 
             // If the sum is off by a small amount, adjust the last friend's amount
-            var diff = receiptTotal - totalCalculated;
+            var diff = expectedReceiptTotal - totalCalculated;
             if (Math.Abs(diff) > 0.01m && Math.Abs(diff) <= tolerance && result.Count > 0)
             {
                 result[result.Count - 1].AmountToPay += diff;
                 totalCalculated = result.Sum(f => f.AmountToPay ?? 0);
             }
 
-            if (Math.Abs(totalCalculated - receiptTotal) > tolerance)
+            // Validate that the calculated total matches the receipt total (without tips if not included)
+            if (Math.Abs(totalCalculated - expectedReceiptTotal) > tolerance)
             {
                 return BadRequest(new
                 {
                     Message = "The sum of all friends' amounts does not match the receipt total within acceptable tolerance",
                     CalculatedTotal = totalCalculated,
-                    ReceiptTotal = receiptTotal,
-                    Difference = Math.Abs(totalCalculated - receiptTotal),
+                    ReceiptTotal = expectedReceiptTotal,
+                    Difference = Math.Abs(totalCalculated - expectedReceiptTotal),
                     Tolerance = tolerance,
                     TaxPercentage = taxPercentage,
                     AcceptableRange = new
                     {
-                        Minimum = receiptTotal - tolerance,
-                        Maximum = receiptTotal + tolerance
+                        Minimum = expectedReceiptTotal - tolerance,
+                        Maximum = expectedReceiptTotal + tolerance
                     }
                 });
+            }
+
+            // Add tips equally among friends (regardless of whether included in total or not)
+            if (friendCount > 0)
+            {
+                var tipsPerFriend = totalTips / friendCount;
+                foreach (var friendResult in result)
+                {
+                    friendResult.AmountToPay = Math.Round((friendResult.AmountToPay ?? 0) + tipsPerFriend, 2);
+                }
             }
 
             return Ok(result);
