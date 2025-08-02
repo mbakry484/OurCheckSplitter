@@ -47,6 +47,18 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
     }
   };
 
+  const handleProfileNavigation = () => {
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
+  };
+
+  const handleAddReceipt = () => {
+    if (navigation) {
+      navigation.navigate('AddReceipt');
+    }
+  };
+
   // All receipts data (same as HomeScreen but complete list)
   const allReceipts: Receipt[] = [
     {
@@ -195,7 +207,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>All Receipts</Text>
-        <TouchableOpacity style={styles.addButton}>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddReceipt}>
           <Ionicons name="add" size={24} color="#007AFF" />
         </TouchableOpacity>
       </View>
@@ -243,7 +255,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="receipt" size={24} color="#007AFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={handleProfileNavigation}>
           <Ionicons name="person-outline" size={24} color="#999" />
         </TouchableOpacity>
       </View>

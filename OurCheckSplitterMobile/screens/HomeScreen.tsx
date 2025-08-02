@@ -215,6 +215,18 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
+  const handleProfileNavigation = () => {
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
+  };
+
+  const handleAddReceipt = () => {
+    if (navigation) {
+      navigation.navigate('AddReceipt');
+    }
+  };
+
   const toggleFabMenu = () => {
     const toValue = fabMenuOpen ? 0 : 1;
 
@@ -241,6 +253,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const handleManualEntryPress = () => {
     console.log('Manual entry pressed');
     toggleFabMenu();
+    handleAddReceipt();
   };
 
   const handleFriendPress = (friend: Friend) => {
@@ -456,7 +469,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <TouchableOpacity style={styles.navItem} onPress={handleViewAllReceipts}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={handleProfileNavigation}>
           <Ionicons name="person-outline" size={24} color="#999" />
         </TouchableOpacity>
       </View>

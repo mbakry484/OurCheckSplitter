@@ -4,6 +4,8 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './screens/HomeScreen';
 import FriendsScreen from './screens/FriendsScreen';
 import ReceiptsScreen from './screens/ReceiptsScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import AddReceiptWrapper from './screens/AddReceiptWrapper';
 
 const Stack = createStackNavigator();
 
@@ -18,6 +20,8 @@ export default function App() {
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Friends" component={FriendsScreen} />
         <Stack.Screen name="Receipts" component={ReceiptsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="AddReceipt" component={AddReceiptWrapper} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>

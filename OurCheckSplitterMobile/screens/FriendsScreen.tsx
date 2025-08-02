@@ -65,6 +65,12 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     }
   };
 
+  const handleProfileNavigation = () => {
+    if (navigation) {
+      navigation.navigate('Profile');
+    }
+  };
+
   const handleFriendPress = (friend: Friend) => {
     setSelectedFriend(friend);
   };
@@ -349,7 +355,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
         <TouchableOpacity style={styles.navItem} onPress={handleReceiptsNavigation}>
           <Ionicons name="receipt-outline" size={24} color="#999" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={handleProfileNavigation}>
           <Ionicons name="person-outline" size={24} color="#999" />
         </TouchableOpacity>
       </View>
