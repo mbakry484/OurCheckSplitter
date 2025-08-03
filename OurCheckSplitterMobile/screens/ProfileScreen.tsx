@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 
 interface ProfileScreenProps {
   navigation?: any;
@@ -118,7 +119,7 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
@@ -318,11 +319,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: padding.xl,
+    paddingVertical: padding.xl,
+    paddingTop: padding.xxl,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: height.header,
   },
   backButton: {
     width: 40,
@@ -331,7 +334,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
+    paddingTop: padding.sm,
     fontWeight: '600',
     color: '#333',
   },

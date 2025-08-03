@@ -25,12 +25,19 @@ const AddReceiptWrapper = ({ navigation, route }: AddReceiptWrapperProps) => {
     setShowOverlay(false);
   };
 
+  const handleEditBasicData = (currentData: BasicReceiptData) => {
+    // Reopen overlay with current data for editing
+    setBasicData(currentData);
+    setShowOverlay(true);
+  };
+
   if (showOverlay) {
     return (
       <AddReceiptOverlay
         visible={true}
         onClose={handleOverlayClose}
         onNext={handleOverlayNext}
+        initialData={basicData} // Pass existing data for editing
       />
     );
   }
@@ -48,6 +55,7 @@ const AddReceiptWrapper = ({ navigation, route }: AddReceiptWrapperProps) => {
     <AddReceiptScreen 
       navigation={navigation} 
       route={modifiedRoute}
+      onEditBasicData={handleEditBasicData}
     />
   );
 };

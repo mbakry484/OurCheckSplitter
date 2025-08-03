@@ -14,10 +14,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 
 interface AddReceiptScreenProps {
   navigation?: any;
   route?: any;
+  onEditBasicData?: (currentData: BasicReceiptData) => void;
 }
 
 interface BasicReceiptData {
@@ -43,7 +45,7 @@ interface Friend {
   selected: boolean;
 }
 
-const AddReceiptScreen = ({ navigation, route }: AddReceiptScreenProps) => {
+const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScreenProps) => {
   const insets = useSafeAreaInsets();
   
   // Get basic data from route params (from overlay)
@@ -77,6 +79,20 @@ const AddReceiptScreen = ({ navigation, route }: AddReceiptScreenProps) => {
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
+    }
+  };
+
+  const handleEditBasicData = () => {
+    if (onEditBasicData && basicData) {
+      const currentData: BasicReceiptData = {
+        receiptName: receiptTitle,
+        date: receiptDate,
+        finalTotal: expectedTotal.toString(),
+        tax: tax,
+        tips: tip,
+        tipsIncluded: false, // You can track this if needed
+      };
+      onEditBasicData(currentData);
     }
   };
 
@@ -240,51 +256,66 @@ const AddReceiptScreen = ({ navigation, route }: AddReceiptScreenProps) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <Ionicons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {basicData ? 'Add Items & Split' : 'Add Receipt'}
-        </Text>
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveReceipt}>
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
-      </View>
+             {/* Header */}
+       <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
+         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
+           <Ionicons name="arrow-back" size={24} color="#007AFF" />
+         </TouchableOpacity>
+         <Text style={styles.headerTitle}>
+           {basicData ? 'Add Items & Split' : 'Add Receipt'}
+         </Text>
+         <View style={styles.headerSpacer} />
+       </View>
 
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Receipt Details */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Receipt Details</Text>
+          {/* Basic Receipt Info (Non-editable with Edit Button) */}
+          {(basicData || receiptTitle) && (
+            <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Receipt Information</Text>
+              {onEditBasicData && (
+                <TouchableOpacity style={styles.editBasicButton} onPress={handleEditBasicData}>
+                  <Ionicons name="create-outline" size={20} color="#007AFF" />
+                  <Text style={styles.editBasicText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <View style={styles.sectionContent}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Title</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter receipt title..."
-                  placeholderTextColor="#999"
-                  value={receiptTitle}
-                  onChangeText={setReceiptTitle}
-                />
-              </View>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Date</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="MM/DD/YYYY"
-                  placeholderTextColor="#999"
-                  value={receiptDate}
-                  onChangeText={setReceiptDate}
-                />
+              <View style={styles.basicInfoGrid}>
+                <View style={styles.basicInfoItem}>
+                  <Text style={styles.basicInfoLabel}>Receipt Name</Text>
+                  <Text style={styles.basicInfoValue}>{receiptTitle || 'Not set'}</Text>
+                </View>
+                <View style={styles.basicInfoItem}>
+                  <Text style={styles.basicInfoLabel}>Date</Text>
+                  <Text style={styles.basicInfoValue}>{receiptDate || 'Not set'}</Text>
+                </View>
+                <View style={styles.basicInfoItem}>
+                  <Text style={styles.basicInfoLabel}>Final Total</Text>
+                  <Text style={[styles.basicInfoValue, styles.finalTotalValue]}>
+                    ${expectedTotal > 0 ? expectedTotal.toFixed(2) : '0.00'}
+                  </Text>
+                </View>
+                {parseFloat(tax) > 0 && (
+                  <View style={styles.basicInfoItem}>
+                    <Text style={styles.basicInfoLabel}>Tax</Text>
+                    <Text style={styles.basicInfoValue}>${parseFloat(tax).toFixed(2)}</Text>
+                  </View>
+                )}
+                {parseFloat(tip) > 0 && (
+                  <View style={styles.basicInfoItem}>
+                    <Text style={styles.basicInfoLabel}>Tip</Text>
+                    <Text style={styles.basicInfoValue}>${parseFloat(tip).toFixed(2)}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
+          )}
 
           {/* Items */}
           <View style={styles.section}>
@@ -301,37 +332,7 @@ const AddReceiptScreen = ({ navigation, route }: AddReceiptScreenProps) => {
             </View>
           </View>
 
-          {/* Additional Costs */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Additional Costs</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.inputRow}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Tax</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="$0.00"
-                    placeholderTextColor="#999"
-                    value={tax}
-                    onChangeText={setTax}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-                
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Tip</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="$0.00"
-                    placeholderTextColor="#999"
-                    value={tip}
-                    onChangeText={setTip}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-              </View>
-            </View>
-          </View>
+
 
           {/* Split With */}
           <View style={styles.section}>
@@ -417,13 +418,34 @@ const AddReceiptScreen = ({ navigation, route }: AddReceiptScreenProps) => {
             </View>
           </View>
 
-          {/* Bottom spacing */}
-          <View style={styles.bottomSpacing} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-};
+                     {/* Bottom spacing */}
+           <View style={styles.bottomSpacing} />
+           
+           {/* Save Button at Bottom */}
+           <View style={styles.saveButtonContainer}>
+             <TouchableOpacity 
+               style={[
+                 styles.saveButton,
+                 expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && styles.saveButtonWarning
+               ]} 
+               onPress={handleSaveReceipt}
+             >
+               <Text style={styles.saveButtonText}>
+                 {expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 
+                   ? 'Review & Save' 
+                   : 'Save Receipt'
+                 }
+               </Text>
+               {expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && (
+                 <Ionicons name="warning" size={20} color="white" style={styles.saveButtonIcon} />
+               )}
+             </TouchableOpacity>
+           </View>
+         </ScrollView>
+       </KeyboardAvoidingView>
+     </SafeAreaView>
+   );
+ };
 
 const styles = StyleSheet.create({
   container: {
@@ -434,11 +456,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: padding.xl,
+    paddingVertical: padding.xl,
+    paddingTop: padding.xxl,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: height.header,
   },
   backButton: {
     width: 40,
@@ -446,22 +470,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: 'white',
-  },
+           headerTitle: {
+        fontSize: fontSize.lg,
+        paddingTop: padding.sm,
+        fontWeight: '600',
+        color: '#333',
+      },
+   headerSpacer: {
+     width: 40,
+   },
   keyboardView: {
     flex: 1,
   },
@@ -667,6 +684,80 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 32,
   },
-});
+  editBasicButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    gap: 4,
+  },
+  editBasicText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  basicInfoGrid: {
+    gap: 16,
+  },
+  basicInfoItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  basicInfoLabel: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  basicInfoValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '600',
+  },
+     finalTotalValue: {
+     color: '#007AFF',
+     fontSize: 18,
+   },
+   saveButtonContainer: {
+     paddingHorizontal: 20,
+     paddingVertical: 16,
+     backgroundColor: 'white',
+     borderTopWidth: 1,
+     borderTopColor: '#E5E5E5',
+   },
+   saveButton: {
+     backgroundColor: '#007AFF',
+     borderRadius: 12,
+     paddingVertical: 16,
+     paddingHorizontal: 24,
+     alignItems: 'center',
+     justifyContent: 'center',
+     flexDirection: 'row',
+     shadowColor: '#007AFF',
+     shadowOffset: { width: 0, height: 2 },
+     shadowOpacity: 0.2,
+     shadowRadius: 4,
+     elevation: 3,
+   },
+   saveButtonWarning: {
+     backgroundColor: '#FF9500',
+     shadowColor: '#FF9500',
+   },
+   saveButtonText: {
+     fontSize: 18,
+     fontWeight: '600',
+     color: 'white',
+   },
+   saveButtonIcon: {
+     marginLeft: 8,
+   },
+ });
 
 export default AddReceiptScreen;

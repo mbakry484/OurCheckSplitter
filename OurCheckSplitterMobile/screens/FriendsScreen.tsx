@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 
 interface Receipt {
   id: string;
@@ -300,7 +301,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
       ) : (
         <>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
             <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
               <Ionicons name="arrow-back" size={24} color="#007AFF" />
             </TouchableOpacity>
@@ -369,25 +370,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FA',
   },
   header: {
-    paddingTop: 50,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: padding.xl,
+    paddingVertical: padding.xl,
+    paddingTop: padding.xxl,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: height.header,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: fontSize.xxl,
+    paddingTop: padding.sm,
     fontWeight: 'bold',
     color: '#333',
   },
   backButton: {
+    paddingTop: 10,
+
     padding: 5,
   },
   addButton: {
+    paddingTop: 10,
+
     padding: 5,
   },
   searchContainer: {

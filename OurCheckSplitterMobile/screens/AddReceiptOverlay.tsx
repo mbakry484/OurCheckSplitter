@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Dimensions,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AddReceiptOverlayProps {
   visible: boolean;
   onClose: () => void;
   onNext: (basicData: BasicReceiptData) => void;
+  initialData?: BasicReceiptData | null;
 }
 
 export interface BasicReceiptData {
@@ -29,15 +34,32 @@ export interface BasicReceiptData {
   tipsIncluded: boolean;
 }
 
-const AddReceiptOverlay = ({ visible, onClose, onNext }: AddReceiptOverlayProps) => {
-  const [receiptName, setReceiptName] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [finalTotal, setFinalTotal] = useState('');
-  const [tax, setTax] = useState('');
-  const [tips, setTips] = useState('');
-  const [tipsIncluded, setTipsIncluded] = useState(false);
+const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceiptOverlayProps) => {
+  const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  
+  const [receiptName, setReceiptName] = useState(initialData?.receiptName || '');
+  const [selectedDate, setSelectedDate] = useState(
+    initialData?.date ? new Date(initialData.date) : new Date()
+  );
+  const [finalTotal, setFinalTotal] = useState(initialData?.finalTotal || '');
+  const [tax, setTax] = useState(initialData?.tax || '');
+  const [tips, setTips] = useState(initialData?.tips || '');
+  const [tipsIncluded, setTipsIncluded] = useState(initialData?.tipsIncluded || false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calendarPressed, setCalendarPressed] = useState(false);
+
+  // Update state when initialData changes (for editing)
+  useEffect(() => {
+    if (initialData) {
+      setReceiptName(initialData.receiptName || '');
+      setSelectedDate(initialData.date ? new Date(initialData.date) : new Date());
+      setFinalTotal(initialData.finalTotal || '');
+      setTax(initialData.tax || '');
+      setTips(initialData.tips || '');
+      setTipsIncluded(initialData.tipsIncluded || false);
+    }
+  }, [initialData]);
 
   const handleNext = () => {
     // Validation
@@ -111,130 +133,144 @@ const AddReceiptOverlay = ({ visible, onClose, onNext }: AddReceiptOverlayProps)
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={24} color="#007AFF" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Receipt</Text>
-          <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-            <Text style={styles.nextButtonText}>Next</Text>
-          </TouchableOpacity>
-        </View>
+             <View style={styles.container}>
+        <KeyboardAvoidingView 
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+                     {/* Header */}
+           <View style={styles.header}>
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <Ionicons name="close" size={24} color="#007AFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>
+              {initialData ? 'Edit Receipt' : 'New Receipt'}
+            </Text>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Receipt visual representation */}
-          <View style={styles.receiptContainer}>
-            <View style={styles.receiptHeader}>
-              <View style={styles.receiptPerforation} />
-            </View>
-            
-            <View style={styles.receiptContent}>
-              {/* Receipt Name */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Receipt Name</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={receiptName}
-                  onChangeText={setReceiptName}
-                  placeholder="Enter receipt name"
-                  placeholderTextColor="#999"
-                />
+                     {/* Scrollable Content */}
+           <ScrollView 
+             style={styles.scrollView}
+             contentContainerStyle={styles.scrollContent}
+             showsVerticalScrollIndicator={false}
+             keyboardShouldPersistTaps="handled"
+           >
+             {/* Instructions */}
+             <Text style={styles.instructions}>
+               {initialData 
+                 ? 'Update receipt details below'
+                 : 'Enter basic receipt information to get started'
+               }
+             </Text>
+             
+             {/* Receipt visual representation */}
+             <View style={[styles.receiptContainer, { maxWidth: Math.min(screenWidth - 40, 400) }]}>
+              <View style={styles.receiptHeader}>
+                <View style={styles.receiptPerforation} />
               </View>
-
-              {/* Date */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Date</Text>
-                <View style={styles.dateInputContainer}>
+              
+              <View style={styles.receiptContent}>
+                {/* Receipt Name */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Receipt Name</Text>
                   <TextInput
-                    style={[styles.fieldInput, styles.dateInput]}
-                    value={formatDateForDisplay(selectedDate)}
-                    placeholder="MM/DD/YYYY"
+                    style={styles.fieldInput}
+                    value={receiptName}
+                    onChangeText={setReceiptName}
+                    placeholder="Enter receipt name"
                     placeholderTextColor="#999"
-                    editable={false}
                   />
-                  <TouchableOpacity 
-                    style={[
-                      styles.calendarButton,
-                      calendarPressed && styles.calendarButtonPressed
-                    ]}
-                    onPress={handleDateSelect}
-                    onPressIn={() => setCalendarPressed(true)}
-                    onPressOut={() => setCalendarPressed(false)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="calendar-outline" size={20} color="#007AFF" />
-                  </TouchableOpacity>
                 </View>
-              </View>
 
-              {/* Final Total */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Final total</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={finalTotal}
-                  onChangeText={setFinalTotal}
-                  placeholder="$0.00"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
+                {/* Date */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Date</Text>
+                  <View style={styles.dateInputContainer}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.dateInput]}
+                      value={formatDateForDisplay(selectedDate)}
+                      placeholder="MM/DD/YYYY"
+                      placeholderTextColor="#999"
+                      editable={false}
+                    />
+                    <TouchableOpacity 
+                      style={[
+                        styles.calendarButton,
+                        calendarPressed && styles.calendarButtonPressed
+                      ]}
+                      onPress={handleDateSelect}
+                      onPressIn={() => setCalendarPressed(true)}
+                      onPressOut={() => setCalendarPressed(false)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="calendar-outline" size={20} color="#007AFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
-              {/* Tax */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Tax</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={tax}
-                  onChangeText={setTax}
-                  placeholder="$0.00"
-                  placeholderTextColor="#999"
-                  keyboardType="decimal-pad"
-                />
-              </View>
-
-              {/* Tips */}
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>Tips</Text>
-                <View style={styles.tipsRow}>
+                {/* Final Total */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Final total</Text>
                   <TextInput
-                    style={[styles.fieldInput, styles.tipsInput]}
-                    value={tips}
-                    onChangeText={setTips}
+                    style={styles.fieldInput}
+                    value={finalTotal}
+                    onChangeText={setFinalTotal}
                     placeholder="$0.00"
                     placeholderTextColor="#999"
                     keyboardType="decimal-pad"
                   />
-                  <View style={styles.tipsIncludedContainer}>
-                    <Text style={styles.tipsIncludedText}>Tips Included</Text>
-                    <Switch
-                      value={tipsIncluded}
-                      onValueChange={setTipsIncluded}
-                      trackColor={{ false: '#E5E5E5', true: '#4ECDC4' }}
-                      thumbColor={tipsIncluded ? 'white' : '#f4f3f4'}
+                </View>
+
+                {/* Tax */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Tax</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={tax}
+                    onChangeText={setTax}
+                    placeholder="$0.00"
+                    placeholderTextColor="#999"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+
+                {/* Tips */}
+                <View style={styles.fieldContainer}>
+                  <Text style={styles.fieldLabel}>Tips</Text>
+                  <View style={styles.tipsRow}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.tipsInput]}
+                      value={tips}
+                      onChangeText={setTips}
+                      placeholder="$0.00"
+                      placeholderTextColor="#999"
+                      keyboardType="decimal-pad"
                     />
+                    <View style={styles.tipsIncludedContainer}>
+                      <Text style={styles.tipsIncludedText}>Tips Included</Text>
+                      <Switch
+                        value={tipsIncluded}
+                        onValueChange={setTipsIncluded}
+                        trackColor={{ false: '#E5E5E5', true: '#4ECDC4' }}
+                        thumbColor={tipsIncluded ? 'white' : '#f4f3f4'}
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
+
+              <View style={styles.receiptFooter}>
+                <View style={styles.receiptPerforation} />
+              </View>
             </View>
 
-            <View style={styles.receiptFooter}>
-              <View style={styles.receiptPerforation} />
-            </View>
-          </View>
-
-          {/* Instructions */}
-          <Text style={styles.instructions}>
-            Fill in the basic receipt information to get started. You'll be able to add items and split details on the next screen.
-          </Text>
-        </View>
-      </KeyboardAvoidingView>
+            
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </View>
 
       {/* Native Date Picker */}
       {showDatePicker && (
@@ -287,62 +323,70 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FA',
   },
+  keyboardView: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60, // Account for status bar
+    paddingHorizontal: padding.xl,
+    paddingVertical: padding.lg,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: height.button,
   },
   closeButton: {
-    width: 40,
-    height: 40,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
     fontWeight: '600',
     color: '#333',
   },
   nextButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     backgroundColor: '#007AFF',
-    borderRadius: 8,
+    borderRadius: 6,
     shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    elevation: 1,
   },
   nextButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: 'white',
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 32,
+  },
+  scrollContent: {
+    paddingHorizontal: padding.xl,
+    paddingTop: padding.xl,
+    paddingBottom: padding.xl,
     alignItems: 'center',
+    minHeight: '100%',
   },
   receiptContainer: {
     backgroundColor: 'white',
-    borderRadius: 12,
+    borderRadius: spacing.md,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: width.modal,
     borderWidth: 1,
     borderColor: '#E5E5E5',
+    alignSelf: 'center',
   },
   receiptHeader: {
     height: 16,
@@ -368,23 +412,23 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   receiptContent: {
-    padding: 24,
+    padding: padding.xxl,
   },
   fieldContainer: {
-    marginBottom: 20,
+    marginBottom: padding.xl,
   },
   fieldLabel: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: '500',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   fieldInput: {
     backgroundColor: '#F8F9FA',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderRadius: spacing.sm,
+    paddingHorizontal: padding.lg,
+    paddingVertical: padding.md,
+    fontSize: fontSize.md,
     color: '#333',
     borderWidth: 1,
     borderColor: '#E5E5E5',
@@ -393,11 +437,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+    minHeight: height.input,
   },
   tipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   tipsInput: {
     flex: 1,
@@ -421,8 +466,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   calendarButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     backgroundColor: '#F0F8FF',
     borderRadius: 8,
     justifyContent: 'center',
@@ -440,12 +485,13 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
   instructions: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'center',
-    marginTop: 24,
+    marginBottom: 16,
     paddingHorizontal: 20,
-    lineHeight: 22,
+    lineHeight: 18,
+    maxWidth: 400,
   },
   // iOS Date Picker Styles
   iosDatePickerContainer: {
@@ -458,10 +504,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingTop: 60,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+    minHeight: 60,
   },
   datePickerCancel: {
     fontSize: 16,
