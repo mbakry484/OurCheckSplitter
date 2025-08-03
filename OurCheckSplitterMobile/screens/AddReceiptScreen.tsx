@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   Switch,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -59,22 +60,22 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
   ]);
   const [tip, setTip] = useState(basicData?.tips || '');
   const [tax, setTax] = useState(basicData?.tax || '');
-  const [splitEqually, setSplitEqually] = useState(true);
   
   // Store final total from basic data for validation
   const [expectedTotal] = useState(basicData?.finalTotal ? parseFloat(basicData.finalTotal) : 0);
   
-  // Friends selection
+  // Friends selection with search
   const [friends] = useState<Friend[]>([
-    { id: '1', name: 'John', avatar: '👨‍💻', selected: true },
-    { id: '2', name: 'Sarah', avatar: '👩‍🎨', selected: true },
+    { id: '1', name: 'John', avatar: '👨‍💻', selected: false },
+    { id: '2', name: 'Sarah', avatar: '👩‍🎨', selected: false },
     { id: '3', name: 'Mike', avatar: '👨‍💼', selected: false },
     { id: '4', name: 'Emma', avatar: '👩‍🦰', selected: false },
     { id: '5', name: 'Alex', avatar: '👨‍🎓', selected: false },
   ]);
-  const [selectedFriends, setSelectedFriends] = useState<Friend[]>(
-    friends.filter(f => f.selected)
-  );
+  const [selectedFriends, setSelectedFriends] = useState<Friend[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [newFriendName, setNewFriendName] = useState('');
 
   const handleGoBack = () => {
     if (navigation) {
@@ -130,11 +131,46 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     }
   };
 
+  const filteredFriends = friends.filter(friend =>
+    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddNewFriend = () => {
+    if (newFriendName.trim()) {
+      const newFriend: Friend = {
+        id: Date.now().toString(),
+        name: newFriendName.trim(),
+        avatar: '👤',
+        selected: true,
+      };
+      // Add to friends list and select by default
+      friends.push(newFriend);
+      setSelectedFriends([...selectedFriends, newFriend]);
+      setNewFriendName('');
+      setShowAddFriendModal(false);
+    }
+  };
+
+  const handleSearchFriend = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedFriends.length === filteredFriends.length) {
+      // If all are selected, deselect all
+      setSelectedFriends([]);
+    } else {
+      // If not all are selected, select all
+      setSelectedFriends([...filteredFriends]);
+    }
+  };
+
+  const isAllSelected = filteredFriends.length > 0 && selectedFriends.length === filteredFriends.length;
+
   const calculateSubtotal = () => {
     return items.reduce((sum, item) => {
       const price = parseFloat(item.price) || 0;
-      const quantity = parseInt(item.quantity) || 1;
-      return sum + (price * quantity);
+      return sum + price; // Price is already the total for all quantity
     }, 0);
   };
 
@@ -195,18 +231,6 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
 
   const renderItem = (item: ReceiptItem, index: number) => (
     <View key={item.id} style={styles.itemContainer}>
-      <View style={styles.itemHeader}>
-        <Text style={styles.itemLabel}>Item {index + 1}</Text>
-        {items.length > 1 && (
-          <TouchableOpacity 
-            onPress={() => handleRemoveItem(item.id)}
-            style={styles.removeButton}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-          </TouchableOpacity>
-        )}
-      </View>
-      
       <View style={styles.itemRow}>
         <TextInput
           style={[styles.input, styles.itemNameInput]}
@@ -225,12 +249,20 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
         />
         <TextInput
           style={[styles.input, styles.priceInput]}
-          placeholder="$0.00"
+          placeholder="Total $"
           placeholderTextColor="#999"
           value={item.price}
           onChangeText={(value) => updateItem(item.id, 'price', value)}
           keyboardType="decimal-pad"
         />
+        {items.length > 1 && (
+          <TouchableOpacity 
+            onPress={() => handleRemoveItem(item.id)}
+            style={styles.removeButton}
+          >
+            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -314,10 +346,73 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                 )}
               </View>
             </View>
-          </View>
-          )}
+                     </View>
+           )}
 
-          {/* Items */}
+           {/* Friends Section */}
+           <View style={styles.section}>
+             <View style={styles.sectionHeader}>
+               <Text style={styles.sectionTitle}>Friends</Text>
+               <TouchableOpacity 
+                 style={styles.addFriendButton} 
+                 onPress={() => setShowAddFriendModal(true)}
+               >
+                 <Ionicons name="person-add" size={20} color="#007AFF" />
+                 <Text style={styles.addFriendText}>Add Friend</Text>
+               </TouchableOpacity>
+             </View>
+             
+             <View style={styles.sectionContent}>
+               {/* Search Bar */}
+               <View style={styles.searchContainer}>
+                 <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                 <TextInput
+                   style={styles.searchInput}
+                   placeholder="Search friends..."
+                   placeholderTextColor="#999"
+                   value={searchQuery}
+                   onChangeText={handleSearchFriend}
+                 />
+                 {searchQuery.length > 0 && (
+                   <TouchableOpacity onPress={() => setSearchQuery('')}>
+                     <Ionicons name="close-circle" size={20} color="#999" />
+                   </TouchableOpacity>
+                 )}
+               </View>
+
+               {/* Select All Checkbox */}
+               {filteredFriends.length > 0 && (
+                 <View style={styles.selectAllContainer}>
+                   <TouchableOpacity 
+                     style={styles.selectAllButton} 
+                     onPress={handleSelectAll}
+                   >
+                     <View style={[styles.checkbox, isAllSelected && styles.checkboxSelected]}>
+                       {isAllSelected && (
+                         <Ionicons name="checkmark" size={16} color="white" />
+                       )}
+                     </View>
+                     <Text style={styles.selectAllText}>
+                       {isAllSelected ? 'Deselect All' : 'Select All'}
+                     </Text>
+                   </TouchableOpacity>
+                 </View>
+               )}
+
+               {/* Friends List */}
+               <View style={styles.friendsContainer}>
+                 {filteredFriends.map(renderFriend)}
+               </View>
+               
+               {selectedFriends.length > 0 && (
+                 <Text style={styles.selectionSummary}>
+                   Selected: {selectedFriends.map(f => f.name).join(', ')}
+                 </Text>
+               )}
+             </View>
+           </View>
+
+           {/* Items */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Items</Text>
@@ -334,31 +429,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
 
 
 
-          {/* Split With */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Split With</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.splitOption}>
-                <Text style={styles.splitOptionText}>Split Equally</Text>
-                <Switch
-                  value={splitEqually}
-                  onValueChange={setSplitEqually}
-                  trackColor={{ false: '#E5E5E5', true: '#4ECDC4' }}
-                  thumbColor={splitEqually ? 'white' : '#f4f3f4'}
-                />
-              </View>
-              
-              <View style={styles.friendsContainer}>
-                {friends.map(renderFriend)}
-              </View>
-              
-              {selectedFriends.length > 0 && (
-                <Text style={styles.selectionSummary}>
-                  Selected: {selectedFriends.map(f => f.name).join(', ')}
-                </Text>
-              )}
-            </View>
-          </View>
+          
 
           {/* Summary */}
           <View style={styles.section}>
@@ -407,14 +478,14 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                 </View>
               )}
               
-              {selectedFriends.length > 0 && splitEqually && (
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Per person:</Text>
-                  <Text style={styles.summaryValue}>
-                    ${(calculateTotal() / (selectedFriends.length + 1)).toFixed(2)}
-                  </Text>
-                </View>
-              )}
+                             {selectedFriends.length > 0 && (
+                 <View style={styles.summaryRow}>
+                   <Text style={styles.summaryLabel}>Per person:</Text>
+                   <Text style={styles.summaryValue}>
+                     ${(calculateTotal() / (selectedFriends.length + 1)).toFixed(2)}
+                   </Text>
+                 </View>
+               )}
             </View>
           </View>
 
@@ -441,11 +512,58 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                )}
              </TouchableOpacity>
            </View>
-         </ScrollView>
-       </KeyboardAvoidingView>
-     </SafeAreaView>
-   );
- };
+                   </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Add Friend Modal */}
+        <Modal
+          visible={showAddFriendModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowAddFriendModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New Friend</Text>
+                <TouchableOpacity onPress={() => setShowAddFriendModal(false)}>
+                  <Ionicons name="close" size={24} color="#999" />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.modalBody}>
+                <Text style={styles.modalLabel}>Friend's Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter friend's name"
+                  placeholderTextColor="#999"
+                  value={newFriendName}
+                  onChangeText={setNewFriendName}
+                  autoFocus={true}
+                />
+              </View>
+              
+              <View style={styles.modalFooter}>
+                <TouchableOpacity 
+                  style={styles.modalCancelButton}
+                  onPress={() => setShowAddFriendModal(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.modalAddButton, !newFriendName.trim() && styles.modalAddButtonDisabled]}
+                  onPress={handleAddNewFriend}
+                  disabled={!newFriendName.trim()}
+                >
+                  <Text style={styles.modalAddText}>Add Friend</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </SafeAreaView>
+    );
+  };
 
 const styles = StyleSheet.create({
   container: {
@@ -535,17 +653,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
-  itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  itemLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
+
+
   removeButton: {
     padding: 4,
   },
@@ -578,13 +687,65 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     marginLeft: 4,
   },
-  splitOption: {
+  addFriendButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#007AFF',
   },
-  splitOptionText: {
+  addFriendText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+    marginLeft: 4,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  selectAllContainer: {
+    marginBottom: 12,
+  },
+  selectAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checkboxSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  selectAllText: {
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
@@ -755,9 +916,85 @@ const styles = StyleSheet.create({
      fontWeight: '600',
      color: 'white',
    },
-   saveButtonIcon: {
-     marginLeft: 8,
-   },
- });
+       saveButtonIcon: {
+      marginLeft: 8,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    modalContent: {
+      backgroundColor: 'white',
+      borderRadius: 12,
+      padding: 24,
+      width: '85%',
+      maxWidth: 400,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: '#333',
+    },
+    modalBody: {
+      marginBottom: 20,
+    },
+    modalLabel: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#333',
+      marginBottom: 8,
+    },
+    modalInput: {
+      backgroundColor: '#F8F9FA',
+      borderRadius: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 16,
+      color: '#333',
+      borderWidth: 1,
+      borderColor: '#E5E5E5',
+    },
+    modalFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    modalCancelButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#E5E5E5',
+      alignItems: 'center',
+    },
+    modalCancelText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#666',
+    },
+    modalAddButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 8,
+      backgroundColor: '#007AFF',
+      alignItems: 'center',
+    },
+    modalAddButtonDisabled: {
+      backgroundColor: '#E5E5E5',
+    },
+    modalAddText: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: 'white',
+    },
+  });
 
 export default AddReceiptScreen;
