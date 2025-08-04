@@ -37,6 +37,16 @@ interface ReceiptItem {
   name: string;
   price: string;
   quantity: string;
+  assignedFriends: string[]; // Array of friend IDs assigned to this item
+  splitEqually: boolean; // Whether to split equally among assigned friends
+  subitems: SubItem[]; // Array of subitems when quantity > 1
+}
+
+interface SubItem {
+  id: string;
+  name: string;
+  price: string;
+  assignedFriends: string[]; // Array of friend IDs assigned to this subitem
 }
 
 interface Friend {
@@ -56,7 +66,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
   const [receiptTitle, setReceiptTitle] = useState(basicData?.receiptName || '');
   const [receiptDate, setReceiptDate] = useState(basicData?.date || new Date().toLocaleDateString());
   const [items, setItems] = useState<ReceiptItem[]>([
-    { id: '1', name: '', price: '', quantity: '1' }
+    { id: '1', name: '', price: '', quantity: '1', assignedFriends: [], splitEqually: true, subitems: [] }
   ]);
   const [tip, setTip] = useState(basicData?.tips || '');
   const [tax, setTax] = useState(basicData?.tax || '');
@@ -76,6 +86,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
   const handleGoBack = () => {
     if (navigation) {
@@ -102,7 +113,10 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
       id: (items.length + 1).toString(),
       name: '',
       price: '',
-      quantity: '1'
+      quantity: '1',
+      assignedFriends: [],
+      splitEqually: true,
+      subitems: []
     };
     setItems([...items, newItem]);
   };
@@ -113,10 +127,149 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     }
   };
 
-  const updateItem = (id: string, field: keyof ReceiptItem, value: string) => {
+  const updateItem = (id: string, field: keyof ReceiptItem, value: string | string[]) => {
     setItems(items.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
+  };
+
+  const toggleItemExpansion = (itemId: string) => {
+    setExpandedItemId(expandedItemId === itemId ? null : itemId);
+  };
+
+  const assignFriendToItem = (itemId: string, friendId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const isAssigned = item.assignedFriends.includes(friendId);
+        const updatedFriends = isAssigned
+          ? item.assignedFriends.filter(id => id !== friendId)
+          : [...item.assignedFriends, friendId];
+        return { ...item, assignedFriends: updatedFriends };
+      }
+      return item;
+    }));
+  };
+
+  const selectAllFriendsForItem = (itemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const selectedFriendIds = selectedFriends.map(friend => friend.id);
+        return { ...item, assignedFriends: selectedFriendIds };
+      }
+      return item;
+    }));
+  };
+
+  const deselectAllFriendsForItem = (itemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, assignedFriends: [] };
+      }
+      return item;
+    }));
+  };
+
+  const toggleAllFriendsForItem = (itemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const selectedFriendIds = selectedFriends.map(friend => friend.id);
+        const isAllSelected = selectedFriendIds.length > 0 && 
+          selectedFriendIds.every(id => item.assignedFriends.includes(id));
+        
+        if (isAllSelected) {
+          // If all are selected, deselect all
+          return { ...item, assignedFriends: [] };
+        } else {
+          // If not all are selected, select all
+          return { ...item, assignedFriends: selectedFriendIds };
+        }
+      }
+      return item;
+    }));
+  };
+
+  const generateSubitems = (itemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const quantity = parseInt(item.quantity) || 1;
+        const itemPrice = parseFloat(item.price) || 0;
+        const subitemPrice = itemPrice / quantity;
+        
+        const subitems: SubItem[] = Array.from({ length: quantity }, (_, index) => ({
+          id: `${itemId}-sub-${index + 1}`,
+          name: item.name,
+          price: subitemPrice.toFixed(2),
+          assignedFriends: []
+        }));
+        
+        return { ...item, subitems };
+      }
+      return item;
+    }));
+  };
+
+  const assignFriendToSubitem = (itemId: string, subitemId: string, friendId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const updatedSubitems = item.subitems.map(subitem => {
+          if (subitem.id === subitemId) {
+            const isAssigned = subitem.assignedFriends.includes(friendId);
+            const updatedFriends = isAssigned
+              ? subitem.assignedFriends.filter(id => id !== friendId)
+              : [...subitem.assignedFriends, friendId];
+            return { ...subitem, assignedFriends: updatedFriends };
+          }
+          return subitem;
+        });
+        return { ...item, subitems: updatedSubitems };
+      }
+      return item;
+    }));
+  };
+
+  const toggleAllFriendsForSubitem = (itemId: string, subitemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        const updatedSubitems = item.subitems.map(subitem => {
+          if (subitem.id === subitemId) {
+            const selectedFriendIds = selectedFriends.map(friend => friend.id);
+            const isAllSelected = selectedFriendIds.length > 0 && 
+              selectedFriendIds.every(id => subitem.assignedFriends.includes(id));
+            
+            if (isAllSelected) {
+              return { ...subitem, assignedFriends: [] };
+            } else {
+              return { ...subitem, assignedFriends: selectedFriendIds };
+            }
+          }
+          return subitem;
+        });
+        return { ...item, subitems: updatedSubitems };
+      }
+      return item;
+    }));
+  };
+
+  const toggleSplitEqually = (itemId: string) => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, splitEqually: !item.splitEqually };
+      }
+      return item;
+    }));
+  };
+
+  const getFriendsForSubitem = (item: ReceiptItem) => {
+    // If item has assigned friends, use those. Otherwise, use all selected friends from receipt
+    return item.assignedFriends.length > 0 
+      ? friends.filter(friend => item.assignedFriends.includes(friend.id))
+      : selectedFriends;
+  };
+
+  const getAssignedFriendsForItem = (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return [];
+    return friends.filter(friend => item.assignedFriends.includes(friend.id));
   };
 
   const toggleFriendSelection = (friendId: string) => {
@@ -229,43 +382,244 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     );
   };
 
-  const renderItem = (item: ReceiptItem, index: number) => (
-    <View key={item.id} style={styles.itemContainer}>
-      <View style={styles.itemRow}>
-        <TextInput
-          style={[styles.input, styles.itemNameInput]}
-          placeholder="Item name"
-          placeholderTextColor="#999"
-          value={item.name}
-          onChangeText={(value) => updateItem(item.id, 'name', value)}
-        />
-        <TextInput
-          style={[styles.input, styles.quantityInput]}
-          placeholder="Qty"
-          placeholderTextColor="#999"
-          value={item.quantity}
-          onChangeText={(value) => updateItem(item.id, 'quantity', value)}
-          keyboardType="numeric"
-        />
-        <TextInput
-          style={[styles.input, styles.priceInput]}
-          placeholder="Total $"
-          placeholderTextColor="#999"
-          value={item.price}
-          onChangeText={(value) => updateItem(item.id, 'price', value)}
-          keyboardType="decimal-pad"
-        />
-        {items.length > 1 && (
-          <TouchableOpacity 
-            onPress={() => handleRemoveItem(item.id)}
-            style={styles.removeButton}
-          >
-            <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-          </TouchableOpacity>
+  const renderItem = (item: ReceiptItem, index: number) => {
+    const assignedFriends = getAssignedFriendsForItem(item.id);
+    const isExpanded = expandedItemId === item.id;
+    const quantity = parseInt(item.quantity) || 1;
+    const hasSubitems = item.subitems.length > 0;
+    
+    return (
+      <View key={item.id} style={styles.itemCard}>
+        <View style={styles.itemContainer}>
+        <View style={styles.itemRow}>
+          <TextInput
+            style={[styles.input, styles.itemNameInput]}
+            placeholder="Item name"
+            placeholderTextColor="#999"
+            value={item.name}
+            onChangeText={(value) => updateItem(item.id, 'name', value)}
+          />
+          <TextInput
+            style={[styles.input, styles.quantityInput]}
+            placeholder="Qty"
+            placeholderTextColor="#999"
+            value={item.quantity}
+            onChangeText={(value) => updateItem(item.id, 'quantity', value)}
+            keyboardType="numeric"
+          />
+          <TextInput
+            style={[styles.input, styles.priceInput]}
+            placeholder="Total $"
+            placeholderTextColor="#999"
+            value={item.price}
+            onChangeText={(value) => updateItem(item.id, 'price', value)}
+            keyboardType="decimal-pad"
+          />
+          {items.length > 1 && (
+            <TouchableOpacity 
+              onPress={() => handleRemoveItem(item.id)}
+              style={styles.removeButton}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        {/* Split Equally Toggle for items with quantity > 1 */}
+        {quantity > 1 && (
+          <View style={styles.splitEquallyContainer}>
+            <View style={styles.splitEquallyHeader}>
+              <Text style={styles.splitEquallyLabel}>Split Equally:</Text>
+              <TouchableOpacity 
+                style={styles.splitEquallyToggle}
+                onPress={() => toggleSplitEqually(item.id)}
+              >
+                <View style={[
+                  styles.toggleSwitch,
+                  item.splitEqually && styles.toggleSwitchActive
+                ]}>
+                  <View style={[
+                    styles.toggleKnob,
+                    item.splitEqually && styles.toggleKnobActive
+                  ]} />
+                </View>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.splitEquallyDescription}>
+              {item.splitEqually 
+                ? "Item will be split equally among assigned friends"
+                : "Assign different friends to each subitem"
+              }
+            </Text>
+          </View>
         )}
+        
+        {/* Assign Friends Section - Show for all items */}
+        {selectedFriends.length > 0 && (
+          <View style={styles.friendSelectionContainer}>
+            <View style={styles.friendSelectionHeader}>
+              <Text style={styles.friendSelectionLabel}>Assign Friends:</Text>
+              <TouchableOpacity 
+                style={styles.friendSelectionCheckboxContainer}
+                onPress={() => toggleAllFriendsForItem(item.id)}
+              >
+                <View style={[
+                  styles.friendSelectionCheckbox,
+                  (() => {
+                    const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                    const isAllSelected = selectedFriendIds.length > 0 && 
+                      selectedFriendIds.every(id => item.assignedFriends.includes(id));
+                    return isAllSelected && styles.friendSelectionCheckboxSelected;
+                  })()
+                ]}>
+                  {(() => {
+                    const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                    const isAllSelected = selectedFriendIds.length > 0 && 
+                      selectedFriendIds.every(id => item.assignedFriends.includes(id));
+                    return isAllSelected && (
+                      <Ionicons name="checkmark" size={12} color="white" />
+                    );
+                  })()}
+                </View>
+                <Text style={styles.friendSelectionCheckboxText}>
+                  {(() => {
+                    const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                    const isAllSelected = selectedFriendIds.length > 0 && 
+                      selectedFriendIds.every(id => item.assignedFriends.includes(id));
+                    return isAllSelected ? 'Deselect All' : 'Select All';
+                  })()}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.friendSelectionGrid}>
+              {selectedFriends.map(friend => {
+                const isAssigned = item.assignedFriends.includes(friend.id);
+                return (
+                  <TouchableOpacity
+                    key={friend.id}
+                    style={[
+                      styles.friendSelectionChip,
+                      isAssigned && styles.friendSelectionChipSelected
+                    ]}
+                    onPress={() => assignFriendToItem(item.id, friend.id)}
+                  >
+                    <Text style={styles.friendSelectionAvatar}>{friend.avatar}</Text>
+                    <Text style={[
+                      styles.friendSelectionName,
+                      isAssigned && styles.friendSelectionNameSelected
+                    ]}>
+                      {friend.name}
+                    </Text>
+                    {isAssigned && (
+                      <Ionicons name="checkmark-circle" size={14} color="#4ECDC4" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+        
+        {/* Dropdown Arrow - Only when quantity > 1, toggle OFF, and friends assigned */}
+        {quantity > 1 && !item.splitEqually && item.assignedFriends.length > 0 && (
+          <View style={styles.dropdownArrowContainer}>
+            <TouchableOpacity 
+              onPress={() => {
+                if (!hasSubitems) {
+                  generateSubitems(item.id);
+                }
+                toggleItemExpansion(item.id);
+              }}
+              style={styles.dropdownArrowButton}
+            >
+              <Ionicons 
+                name={isExpanded ? "chevron-up" : "chevron-down"} 
+                size={16} 
+                color="#007AFF" 
+              />
+              <Text style={styles.dropdownArrowText}>
+                {isExpanded ? "Hide Subitems" : "Show Subitems"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {/* Subitems Section - Only when expanded, toggle OFF, and friends assigned */}
+        {isExpanded && hasSubitems && !item.splitEqually && item.assignedFriends.length > 0 && (
+          <View style={styles.subitemsContainer}>
+            <Text style={styles.subitemsTitle}>Subitems:</Text>
+            {item.subitems.map((subitem, subIndex) => (
+              <View key={subitem.id} style={styles.subitemContainer}>
+                <View style={styles.subitemHeader}>
+                  <Text style={styles.subitemLabel}>
+                    {subitem.name} #{subIndex + 1} - ${subitem.price}
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.friendSelectionCheckboxContainer}
+                    onPress={() => toggleAllFriendsForSubitem(item.id, subitem.id)}
+                  >
+                    <View style={[
+                      styles.friendSelectionCheckbox,
+                      (() => {
+                        const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                        const isAllSelected = selectedFriendIds.length > 0 && 
+                          selectedFriendIds.every(id => subitem.assignedFriends.includes(id));
+                        return isAllSelected && styles.friendSelectionCheckboxSelected;
+                      })()
+                    ]}>
+                      {(() => {
+                        const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                        const isAllSelected = selectedFriendIds.length > 0 && 
+                          selectedFriendIds.every(id => subitem.assignedFriends.includes(id));
+                        return isAllSelected && (
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        );
+                      })()}
+                    </View>
+                    <Text style={styles.friendSelectionCheckboxText}>
+                      {(() => {
+                        const selectedFriendIds = selectedFriends.map(friend => friend.id);
+                        const isAllSelected = selectedFriendIds.length > 0 && 
+                          selectedFriendIds.every(id => subitem.assignedFriends.includes(id));
+                        return isAllSelected ? 'Deselect All' : 'Select All';
+                      })()}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.friendSelectionGrid}>
+                  {getFriendsForSubitem(item).map(friend => {
+                    const isAssigned = subitem.assignedFriends.includes(friend.id);
+                    return (
+                      <TouchableOpacity
+                        key={friend.id}
+                        style={[
+                          styles.friendSelectionChip,
+                          isAssigned && styles.friendSelectionChipSelected
+                        ]}
+                        onPress={() => assignFriendToSubitem(item.id, subitem.id, friend.id)}
+                      >
+                        <Text style={styles.friendSelectionAvatar}>{friend.avatar}</Text>
+                        <Text style={[
+                          styles.friendSelectionName,
+                          isAssigned && styles.friendSelectionNameSelected
+                        ]}>
+                          {friend.name}
+                        </Text>
+                        {isAssigned && (
+                          <Ionicons name="checkmark-circle" size={14} color="#4ECDC4" />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderFriend = (friend: Friend) => {
     const isSelected = selectedFriends.some(f => f.id === friend.id);
@@ -358,7 +712,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                  onPress={() => setShowAddFriendModal(true)}
                >
                  <Ionicons name="person-add" size={20} color="#007AFF" />
-                 <Text style={styles.addFriendText}>Add Friend</Text>
+                 <Text style={styles.addFriendText}>New Friend</Text>
                </TouchableOpacity>
              </View>
              
@@ -647,29 +1001,46 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  itemContainer: {
+  itemCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
     marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    marginHorizontal: -8,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  itemContainer: {
+    marginBottom: 0,
+    paddingBottom: 0,
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
 
 
   removeButton: {
     padding: 4,
   },
+  expandButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   itemRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
   },
   itemNameInput: {
-    flex: 2,
+    flex: 2.5,
   },
   quantityInput: {
-    flex: 0.5,
+    flex: 0.6,
   },
   priceInput: {
-    flex: 1,
+    flex: 1.2,
   },
   addItemButton: {
     flexDirection: 'row',
@@ -990,11 +1361,340 @@ const styles = StyleSheet.create({
     modalAddButtonDisabled: {
       backgroundColor: '#E5E5E5',
     },
-    modalAddText: {
-      fontSize: 16,
-      fontWeight: '500',
-      color: 'white',
-    },
+      modalAddText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'white',
+  },
+  // Friend Assignment Styles
+  friendAssignmentContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  friendAssignmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  friendAssignmentTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  assignedCount: {
+    fontSize: 12,
+    color: '#4ECDC4',
+    fontWeight: '500',
+  },
+  friendAssignmentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  friendAssignmentChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    gap: 4,
+  },
+  friendAssignmentChipSelected: {
+    backgroundColor: '#E8F7F5',
+    borderColor: '#4ECDC4',
+  },
+  friendAssignmentAvatar: {
+    fontSize: 14,
+  },
+  friendAssignmentName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#333',
+  },
+  friendAssignmentNameSelected: {
+    color: '#4ECDC4',
+  },
+  assignedFriendsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  assignedFriendsPreview: {
+    marginTop: 8,
+  },
+  assignedFriendsLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  assignedFriendsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  assignedFriendTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#E8F7F5',
+    borderRadius: 12,
+    gap: 4,
+  },
+  assignedFriendAvatar: {
+    fontSize: 12,
+  },
+  assignedFriendName: {
+    fontSize: 11,
+    color: '#4ECDC4',
+    fontWeight: '500',
+  },
+  // Friend Selection Styles
+  friendSelectionContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  friendSelectionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  friendSelectionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  friendSelectionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    gap: 4,
+  },
+  friendSelectionChipSelected: {
+    backgroundColor: '#E8F7F5',
+    borderColor: '#4ECDC4',
+  },
+  friendSelectionAvatar: {
+    fontSize: 12,
+  },
+  friendSelectionName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#333',
+  },
+  friendSelectionNameSelected: {
+    color: '#4ECDC4',
+  },
+  friendSelectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  friendSelectionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  friendSelectionButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  friendSelectionButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  friendSelectionCheckboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  friendSelectionCheckbox: {
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  friendSelectionCheckboxSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  friendSelectionCheckboxText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
+  // Subitems Styles
+  subitemDropdownButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  subitemsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  subitemsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  subitemContainer: {
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  subitemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  subitemLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+  },
+  // Split Equally Toggle Styles
+  splitEquallyContainer: {
+    marginTop: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  splitEquallyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  splitEquallyLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  splitEquallyToggle: {
+    padding: 4,
+  },
+  toggleSwitch: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#E5E5E5',
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#007AFF',
+  },
+  toggleKnob: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  toggleKnobActive: {
+    transform: [{ translateX: 20 }],
+  },
+  splitEquallyDescription: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  // Item Friends List Styles
+  itemFriendsListContainer: {
+    marginTop: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  itemFriendsListLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 6,
+  },
+  itemFriendsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  itemFriendTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#E8F7F5',
+    borderRadius: 12,
+    gap: 4,
+  },
+  itemFriendAvatar: {
+    fontSize: 12,
+  },
+  itemFriendName: {
+    fontSize: 11,
+    color: '#4ECDC4',
+    fontWeight: '500',
+  },
+  noFriendsAssigned: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  // Dropdown Arrow Styles
+  dropdownArrowContainer: {
+    marginTop: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  dropdownArrowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  dropdownArrowText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#007AFF',
+  },
   });
 
 export default AddReceiptScreen;
