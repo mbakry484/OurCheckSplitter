@@ -174,8 +174,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               mimeType: 'image/png',
               dialogTitle: 'Share Receipt',
             });
-            
-            console.log('Receipt shared successfully');
           } catch (captureError) {
             console.error('Capture error:', captureError);
             
@@ -193,8 +191,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
                 mimeType: 'image/png',
                 dialogTitle: 'Share Receipt',
               });
-              
-              console.log('Receipt shared successfully (alternative method)');
             } catch (alternativeError) {
               console.error('Alternative capture also failed:', alternativeError);
               Alert.alert('Error', 'Failed to capture receipt. Please try again.');
@@ -261,52 +257,42 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Receipt Summary */}
-                 <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
-           <View style={styles.summaryCard}>
-                       <View style={styles.summaryHeader}>
-              {!isSharing && <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>}
-              {!isSharing && (
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => {
-                    console.log('Edit button pressed - receiptData:', receiptData);
-                    if (navigation) {
-                      const navigationParams = { 
-                        basicData: {
-                          receiptName: receiptData?.receiptTitle || '',
-                          date: receiptData?.receiptDate || '',
-                          tips: receiptData?.tip?.toString() || '0',
-                          tax: receiptData?.tax?.toString() || '0',
-                          total: receiptData?.totalAmount || 0
-                        },
-                        receiptData,
-                        isEditing: true 
-                      };
-                      console.log('Navigation params:', navigationParams);
-                      navigation.navigate('AddReceipt', navigationParams);
-                    }
-                  }}
-                >
-                  <Ionicons name="create-outline" size={20} color="#007AFF" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-           
-           {/* Receipt Name */}
-           {receiptData?.receiptTitle && (
-             <View style={styles.receiptNameRow}>
-               <Text style={styles.receiptName}>{receiptData.receiptTitle}</Text>
-             </View>
-           )}
-           
-           <View style={styles.summaryRow}>
-             <Text style={styles.summaryValue}>${totalReceiptAmount.toFixed(2)}</Text>
-           </View>
-           <View style={styles.summaryRow}>
-             <Text style={styles.summaryLabel}>({friendBills.length} friends)</Text>
-           </View>
-         </View>
+        <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
+          <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>
+                         <TouchableOpacity 
+               style={styles.editButton}
+               onPress={() => {
+                 console.log('Edit button pressed - receiptData:', receiptData);
+                 if (navigation) {
+                   const navigationParams = { 
+                     basicData: {
+                       receiptName: receiptData?.receiptTitle || '',
+                       date: receiptData?.receiptDate || '',
+                       tips: receiptData?.tip?.toString() || '0',
+                       tax: receiptData?.tax?.toString() || '0',
+                       total: receiptData?.totalAmount || 0
+                     },
+                     receiptData,
+                     isEditing: true 
+                   };
+                   console.log('Navigation params:', navigationParams);
+                   navigation.navigate('AddReceipt', navigationParams);
+                 }
+               }}
+             >
+              <Ionicons name="create-outline" size={20} color="#007AFF" />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryValue}>${totalReceiptAmount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>({friendBills.length} friends)</Text>
+          </View>
+        </View>
         
           {/* Friend Bills */}
           <View style={styles.friendBillsSection}>
@@ -424,21 +410,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  receiptNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  receiptName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
   },
   summaryLabel: {
     fontSize: 14,

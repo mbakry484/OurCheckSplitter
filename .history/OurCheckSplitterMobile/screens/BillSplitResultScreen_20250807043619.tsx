@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const insets = useSafeAreaInsets();
   const { receiptData } = route?.params || {};
   const receiptRef = useRef<View>(null);
-  const [isSharing, setIsSharing] = useState(false);
   
   const calculateFriendBills = () => {
     if (!receiptData) return [];
@@ -138,26 +137,16 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const handleShareReceipt = async () => {
     try {
       if (receiptRef.current) {
-        setIsSharing(true);
-        
         // Check if sharing is available
         const isAvailable = await Sharing.isAvailableAsync();
         if (!isAvailable) {
           Alert.alert('Error', 'Sharing is not available on this device');
-          setIsSharing(false);
           return;
         }
 
         // Add a longer delay to ensure the view is fully rendered and all content is visible
         setTimeout(async () => {
           try {
-            // First, scroll to top to ensure all content is visible
-            if (receiptRef.current) {
-              // Force a re-render by updating state
-              const currentTime = Date.now();
-              console.log('Capturing receipt at:', currentTime);
-            }
-            
             const uri = await captureRef(receiptRef, {
               format: 'png',
               quality: 1.0,
@@ -174,35 +163,11 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               mimeType: 'image/png',
               dialogTitle: 'Share Receipt',
             });
-            
-            console.log('Receipt shared successfully');
           } catch (captureError) {
             console.error('Capture error:', captureError);
-            
-            // Try alternative capture method
-            try {
-              const alternativeUri = await captureRef(receiptRef, {
-                format: 'png',
-                quality: 0.8,
-                result: 'tmpfile',
-                snapshotContentContainer: false,
-              });
-              
-              console.log('Alternative capture successful:', alternativeUri);
-              await Sharing.shareAsync(alternativeUri, {
-                mimeType: 'image/png',
-                dialogTitle: 'Share Receipt',
-              });
-              
-              console.log('Receipt shared successfully (alternative method)');
-            } catch (alternativeError) {
-              console.error('Alternative capture also failed:', alternativeError);
-              Alert.alert('Error', 'Failed to capture receipt. Please try again.');
-            }
-          } finally {
-            setIsSharing(false);
+            Alert.alert('Error', 'Failed to capture receipt. Please try again.');
           }
-        }, 1000); // Increased delay to 1000ms for better reliability
+        }, 500); // Increased delay to 500ms
       } else {
         Alert.alert('Error', 'Receipt content not available');
       }
@@ -246,67 +211,49 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>RECEIPT</Text>
-        <TouchableOpacity 
-          style={[styles.shareButton, isSharing && styles.shareButtonDisabled]} 
-          onPress={handleShareReceipt}
-          disabled={isSharing}
-        >
-          <Ionicons 
-            name={isSharing ? "hourglass-outline" : "share-outline"} 
-            size={24} 
-            color={isSharing ? "#999" : "black"} 
-          />
+        <TouchableOpacity style={styles.shareButton} onPress={handleShareReceipt}>
+          <Ionicons name="share-outline" size={24} color="black" />
         </TouchableOpacity>
       </View>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Receipt Summary */}
-                 <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
-           <View style={styles.summaryCard}>
-                       <View style={styles.summaryHeader}>
-              {!isSharing && <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>}
-              {!isSharing && (
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => {
-                    console.log('Edit button pressed - receiptData:', receiptData);
-                    if (navigation) {
-                      const navigationParams = { 
-                        basicData: {
-                          receiptName: receiptData?.receiptTitle || '',
-                          date: receiptData?.receiptDate || '',
-                          tips: receiptData?.tip?.toString() || '0',
-                          tax: receiptData?.tax?.toString() || '0',
-                          total: receiptData?.totalAmount || 0
-                        },
-                        receiptData,
-                        isEditing: true 
-                      };
-                      console.log('Navigation params:', navigationParams);
-                      navigation.navigate('AddReceipt', navigationParams);
-                    }
-                  }}
-                >
-                  <Ionicons name="create-outline" size={20} color="#007AFF" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-           
-           {/* Receipt Name */}
-           {receiptData?.receiptTitle && (
-             <View style={styles.receiptNameRow}>
-               <Text style={styles.receiptName}>{receiptData.receiptTitle}</Text>
-             </View>
-           )}
-           
-           <View style={styles.summaryRow}>
-             <Text style={styles.summaryValue}>${totalReceiptAmount.toFixed(2)}</Text>
-           </View>
-           <View style={styles.summaryRow}>
-             <Text style={styles.summaryLabel}>({friendBills.length} friends)</Text>
-           </View>
-         </View>
+        <View ref={receiptRef} style={styles.receiptContainer}>
+          <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>
+                         <TouchableOpacity 
+               style={styles.editButton}
+               onPress={() => {
+                 console.log('Edit button pressed - receiptData:', receiptData);
+                 if (navigation) {
+                   const navigationParams = { 
+                     basicData: {
+                       receiptName: receiptData?.receiptTitle || '',
+                       date: receiptData?.receiptDate || '',
+                       tips: receiptData?.tip?.toString() || '0',
+                       tax: receiptData?.tax?.toString() || '0',
+                       total: receiptData?.totalAmount || 0
+                     },
+                     receiptData,
+                     isEditing: true 
+                   };
+                   console.log('Navigation params:', navigationParams);
+                   navigation.navigate('AddReceipt', navigationParams);
+                 }
+               }}
+             >
+              <Ionicons name="create-outline" size={20} color="#007AFF" />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryValue}>${totalReceiptAmount.toFixed(2)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>({friendBills.length} friends)</Text>
+          </View>
+        </View>
         
           {/* Friend Bills */}
           <View style={styles.friendBillsSection}>
@@ -361,23 +308,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  shareButtonDisabled: {
-    opacity: 0.5,
-  },
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
-    paddingHorizontal: 20,
     minHeight: 400,
     width: '100%',
-    // Ensure proper rendering for capture
-    overflow: 'hidden',
-    // Add shadow and border for better visual capture
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   content: {
     flex: 1,
@@ -424,21 +359,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  receiptNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  receiptName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
   },
   summaryLabel: {
     fontSize: 14,

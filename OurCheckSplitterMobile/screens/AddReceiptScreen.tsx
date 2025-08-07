@@ -28,6 +28,7 @@ interface BasicReceiptData {
   date: string;
   finalTotal: string;
   tax: string;
+  taxType: string;
   tips: string;
   tipsIncluded: boolean;
 }
@@ -89,6 +90,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
   const [tax, setTax] = useState(
     isEditing ? editingData?.tax?.toString() : (basicData?.tax || '')
   );
+  const [taxType, setTaxType] = useState(
+    isEditing ? editingData?.taxType || '-' : (basicData?.taxType || '-')
+  );
   
   // Debug logging for state initialization
   console.log('State initialization:');
@@ -128,6 +132,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
       setItems(editingData.items || [{ id: '1', name: '', price: '', quantity: '1', assignedFriends: [], splitEqually: true, subitems: [] }]);
       setTip(editingData.tip?.toString() || '');
       setTax(editingData.tax?.toString() || '');
+      setTaxType(editingData.taxType || '-');
       setSelectedFriends(editingData.selectedFriends || []);
     }
   }, [isEditing, editingData]);
@@ -145,6 +150,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
         date: receiptDate,
         finalTotal: expectedTotal.toString(),
         tax: tax,
+        taxType: taxType,
         tips: tip,
         tipsIncluded: false, // You can track this if needed
       };
@@ -162,7 +168,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
       splitEqually: true,
       subitems: []
     };
-    setItems([...items, newItem]);
+    setItems([newItem, ...items]);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -733,7 +739,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                 {parseFloat(tax) > 0 && (
                   <View style={styles.basicInfoItem}>
                     <Text style={styles.basicInfoLabel}>Tax</Text>
-                    <Text style={styles.basicInfoValue}>${parseFloat(tax).toFixed(2)}</Text>
+                    <Text style={styles.basicInfoValue}>
+                      {taxType === '$' ? '$' : ''}{parseFloat(tax).toFixed(2)}{taxType === '%' ? '%' : ''}
+                    </Text>
                   </View>
                 )}
                 {parseFloat(tip) > 0 && (
@@ -848,7 +856,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
               {parseFloat(tax) > 0 && (
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryLabel}>Tax:</Text>
-                  <Text style={styles.summaryValue}>${parseFloat(tax).toFixed(2)}</Text>
+                  <Text style={styles.summaryValue}>
+                    {taxType === '$' ? '$' : ''}{parseFloat(tax).toFixed(2)}{taxType === '%' ? '%' : ''}
+                  </Text>
                 </View>
               )}
               

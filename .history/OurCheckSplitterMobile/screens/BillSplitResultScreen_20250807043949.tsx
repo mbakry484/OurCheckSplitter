@@ -263,35 +263,33 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         {/* Receipt Summary */}
                  <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
            <View style={styles.summaryCard}>
-                       <View style={styles.summaryHeader}>
-              {!isSharing && <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>}
-              {!isSharing && (
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => {
-                    console.log('Edit button pressed - receiptData:', receiptData);
-                    if (navigation) {
-                      const navigationParams = { 
-                        basicData: {
-                          receiptName: receiptData?.receiptTitle || '',
-                          date: receiptData?.receiptDate || '',
-                          tips: receiptData?.tip?.toString() || '0',
-                          tax: receiptData?.tax?.toString() || '0',
-                          total: receiptData?.totalAmount || 0
-                        },
-                        receiptData,
-                        isEditing: true 
-                      };
-                      console.log('Navigation params:', navigationParams);
-                      navigation.navigate('AddReceipt', navigationParams);
-                    }
-                  }}
-                >
-                  <Ionicons name="create-outline" size={20} color="#007AFF" />
-                  <Text style={styles.editButtonText}>Edit</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+           <View style={styles.summaryHeader}>
+             <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>
+                          <TouchableOpacity 
+                style={styles.editButton}
+                onPress={() => {
+                  console.log('Edit button pressed - receiptData:', receiptData);
+                  if (navigation) {
+                    const navigationParams = { 
+                      basicData: {
+                        receiptName: receiptData?.receiptTitle || '',
+                        date: receiptData?.receiptDate || '',
+                        tips: receiptData?.tip?.toString() || '0',
+                        tax: receiptData?.tax?.toString() || '0',
+                        total: receiptData?.totalAmount || 0
+                      },
+                      receiptData,
+                      isEditing: true 
+                    };
+                    console.log('Navigation params:', navigationParams);
+                    navigation.navigate('AddReceipt', navigationParams);
+                  }
+                }}
+              >
+               <Ionicons name="create-outline" size={20} color="#007AFF" />
+               <Text style={styles.editButtonText}>Edit</Text>
+             </TouchableOpacity>
+           </View>
            
            {/* Receipt Name */}
            {receiptData?.receiptTitle && (
@@ -424,21 +422,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 4,
-  },
-  receiptNameRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-  },
-  receiptName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
   },
   summaryLabel: {
     fontSize: 14,

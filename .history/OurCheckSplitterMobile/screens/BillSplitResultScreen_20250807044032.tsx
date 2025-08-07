@@ -264,7 +264,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
                  <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
            <View style={styles.summaryCard}>
                        <View style={styles.summaryHeader}>
-              {!isSharing && <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>}
+              <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>
               {!isSharing && (
                 <TouchableOpacity 
                   style={styles.editButton}

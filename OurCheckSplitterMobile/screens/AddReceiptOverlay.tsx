@@ -30,6 +30,7 @@ export interface BasicReceiptData {
   date: string;
   finalTotal: string;
   tax: string;
+  taxType: string;
   tips: string;
   tipsIncluded: boolean;
 }
@@ -44,6 +45,8 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
   );
   const [finalTotal, setFinalTotal] = useState(initialData?.finalTotal || '');
   const [tax, setTax] = useState(initialData?.tax || '');
+  const [taxType, setTaxType] = useState(initialData?.taxType || '-');
+  const [showTaxDropdown, setShowTaxDropdown] = useState(false);
   const [tips, setTips] = useState(initialData?.tips || '');
   const [tipsIncluded, setTipsIncluded] = useState(initialData?.tipsIncluded || false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -56,6 +59,7 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
       setSelectedDate(initialData.date ? new Date(initialData.date) : new Date());
       setFinalTotal(initialData.finalTotal || '');
       setTax(initialData.tax || '');
+      setTaxType(initialData.taxType || '-');
       setTips(initialData.tips || '');
       setTipsIncluded(initialData.tipsIncluded || false);
     }
@@ -79,12 +83,19 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
       return;
     }
 
+    // Validate tax field and type selection
+    if (tax.trim() && taxType === '-') {
+      Alert.alert('Missing Information', 'Please select a tax type (% or $) when entering a tax amount.');
+      return;
+    }
+
     // Pass data to next stage
     const basicData: BasicReceiptData = {
       receiptName: receiptName.trim(),
       date: selectedDate.toLocaleDateString(),
       finalTotal: finalTotal.trim(),
       tax: tax.trim(),
+      taxType: taxType,
       tips: tips.trim(),
       tipsIncluded,
     };
@@ -98,6 +109,7 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
     setSelectedDate(new Date());
     setFinalTotal('');
     setTax('');
+    setTaxType('-');
     setTips('');
     setTipsIncluded(false);
     setShowDatePicker(false);
@@ -227,14 +239,58 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
                 {/* Tax */}
                 <View style={styles.fieldContainer}>
                   <Text style={styles.fieldLabel}>Tax</Text>
-                  <TextInput
-                    style={styles.fieldInput}
-                    value={tax}
-                    onChangeText={setTax}
-                    placeholder="$0.00"
-                    placeholderTextColor="#999"
-                    keyboardType="decimal-pad"
-                  />
+                  <View style={styles.taxRow}>
+                    <TextInput
+                      style={[styles.fieldInput, styles.taxInput]}
+                      value={tax}
+                      onChangeText={setTax}
+                      placeholder="0.00"
+                      placeholderTextColor="#999"
+                      keyboardType="decimal-pad"
+                    />
+                    <TouchableOpacity 
+                      style={styles.taxTypeButton}
+                      onPress={() => setShowTaxDropdown(!showTaxDropdown)}
+                    >
+                      <Text style={styles.taxTypeButtonText}>{taxType}</Text>
+                      <Ionicons 
+                        name={showTaxDropdown ? "chevron-up" : "chevron-down"} 
+                        size={16} 
+                        color="#666" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {showTaxDropdown && (
+                    <View style={styles.taxDropdown}>
+                      <TouchableOpacity 
+                        style={styles.taxDropdownOption}
+                        onPress={() => {
+                          setTaxType('-');
+                          setShowTaxDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.taxDropdownText, taxType === '-' && styles.taxDropdownTextSelected]}>-</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.taxDropdownOption}
+                        onPress={() => {
+                          setTaxType('%');
+                          setShowTaxDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.taxDropdownText, taxType === '%' && styles.taxDropdownTextSelected]}>%</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.taxDropdownOption}
+                        onPress={() => {
+                          setTaxType('$');
+                          setShowTaxDropdown(false);
+                        }}
+                      >
+                        <Text style={[styles.taxDropdownText, taxType === '$' && styles.taxDropdownTextSelected]}>$</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
 
                 {/* Tips */}
@@ -456,6 +512,69 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#333',
+  },
+  taxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    position: 'relative',
+  },
+  taxInput: {
+    flex: 1,
+  },
+  taxTypeButton: {
+    width: 60,
+    height: 48,
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  taxTypeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  taxDropdown: {
+    position: 'absolute',
+    top: 56,
+    right: 0,
+    width: 60,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 1000,
+  },
+  taxDropdownOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  taxDropdownText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    textAlign: 'center',
+  },
+  taxDropdownTextSelected: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   dateInputContainer: {
     flexDirection: 'row',
