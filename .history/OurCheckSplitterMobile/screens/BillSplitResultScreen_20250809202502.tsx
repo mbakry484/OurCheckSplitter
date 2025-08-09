@@ -60,7 +60,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const insets = useSafeAreaInsets();
   const { receiptData } = route?.params || {};
   const receiptRef = useRef<View>(null);
-  const scrollRef = useRef<ScrollView>(null);
   const [isSharing, setIsSharing] = useState(false);
   
   const calculateFriendBills = () => {
@@ -70,7 +69,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
     const { items, friends, selectedFriends } = receiptData;
     
     // Initialize friend bills
-    selectedFriends.forEach((friend: Friend) => {
+    selectedFriends.forEach(friend => {
       friendBills.push({
         friend,
         items: [],
@@ -79,7 +78,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
     });
     
     // Calculate bills for each item
-    items.forEach((item: ReceiptItem) => {
+    items.forEach(item => {
       const itemPrice = parseFloat(item.price) || 0;
       const quantity = parseInt(item.quantity) || 1;
       
@@ -88,7 +87,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         if (item.assignedFriends.length > 0) {
           const pricePerFriend = itemPrice / item.assignedFriends.length;
           
-          item.assignedFriends.forEach((friendId: string) => {
+          item.assignedFriends.forEach(friendId => {
             const friendBill = friendBills.find(bill => bill.friend.id === friendId);
             if (friendBill) {
               friendBill.items.push({
@@ -103,11 +102,11 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         }
       } else {
         // Individual subitem assignments
-        item.subitems.forEach((subitem: SubItem) => {
+        item.subitems.forEach(subitem => {
           if (subitem.assignedFriends.length > 0) {
             const pricePerFriend = parseFloat(subitem.price) / subitem.assignedFriends.length;
             
-            subitem.assignedFriends.forEach((friendId: string) => {
+            subitem.assignedFriends.forEach(friendId => {
               const friendBill = friendBills.find(bill => bill.friend.id === friendId);
               if (friendBill) {
                 friendBill.items.push({
@@ -129,35 +128,17 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   
   const friendBills = calculateFriendBills();
   const totalReceiptAmount = friendBills.reduce((sum, bill) => sum + bill.totalAmount, 0);
-  const friendCount = friendBills.length;
 
-  // Estimate total lines (after wrapping) to adapt scaling
-  const estimatedLines = useMemo(() => {
-    const maxChars = 48;
-    let lines = 4; // title + date + separator + total row
-    friendBills.forEach((bill) => {
-      lines += 1; // friend header
-      const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-      let current = '';
-      let wrapped = 0;
-      for (const p of parts) {
-        if (current.length === 0) current = p;
-        else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-        else { wrapped += 1; current = p; }
-      }
-      if (current.length) wrapped += 1;
-      lines += wrapped;
-    });
-    return lines;
-  }, [friendBills]);
-
+  // Compute a scale factor so that content always fits inside the fixed receipt area
   const contentScale = useMemo(() => {
-    if (friendCount <= 3) return 1.12;
-    if (friendCount <= 5) return 1.04;
-    const target = 26;
-    const s = target / Math.max(1, estimatedLines);
+    // Roughly estimate lines: 1 line per friend header + 1 per item
+    const totalLines = friendBills.reduce((sum, bill) => sum + 1 + bill.items.length, 0) + 6; // +summary/header lines
+    // Target ~22 lines for comfortable fit; clamp scale to [0.7, 1]
+    const target = 22;
+    if (totalLines <= target) return 1;
+    const s = target / totalLines;
     return Math.max(0.7, Math.min(1, s));
-  }, [friendCount, estimatedLines]);
+  }, [friendBills]);
   
   const handleGoBack = () => {
     if (navigation) {
@@ -188,8 +169,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               console.log('Capturing receipt at:', currentTime);
             }
             
-            const target: any = scrollRef.current || receiptRef.current;
-            const uri = await captureRef(target, {
+            const uri = await captureRef(receiptRef, {
               format: 'png',
               quality: 1.0,
               result: 'tmpfile',
@@ -212,7 +192,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             
             // Try alternative capture method
             try {
-              const alternativeUri = await captureRef(target, {
+              const alternativeUri = await captureRef(receiptRef, {
                 format: 'png',
                 quality: 0.8,
                 result: 'tmpfile',
@@ -296,27 +276,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
           <Ionicons name="arrow-back" size={24} color="#007AFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>RECEIPT</Text>
-        {/* Edit button (go back to edit receipt) */}
-        <TouchableOpacity
-          style={styles.editHeaderButton}
-          onPress={() => {
-            if (navigation) {
-              navigation.navigate('AddReceipt', {
-                basicData: {
-                  receiptName: receiptData?.receiptTitle || '',
-                  date: receiptData?.receiptDate || '',
-                  tips: receiptData?.tip?.toString() || '0',
-                  tax: receiptData?.tax?.toString() || '0',
-                  total: receiptData?.totalAmount || 0,
-                },
-                receiptData,
-                isEditing: true,
-              });
-            }
-          }}
-        >
-          <Ionicons name="create-outline" size={22} color="#000" />
-        </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.shareButton, isSharing && styles.shareButtonDisabled]} 
           onPress={handleShareReceipt}
@@ -330,71 +289,68 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         </TouchableOpacity>
       </View>
       
-      {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
+      {/* DEBUG BANNER - remove when done */}
+      {!isSharing && (
+        <View style={styles.debugBanner}>
+          <Text style={styles.debugText}>DEBUG: BillSplitResultScreen.tsx IS RENDERING</Text>
+        </View>
+      )}
+
+      {/* Receipt Summary - Fixed Size Container */}
       <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
-        <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
-          {/* Receipt Title and Date */}
-          <View style={styles.receiptHeaderArea}>
-            {!!receiptData?.receiptTitle && (
-              <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
-                {receiptData.receiptTitle}
-              </Text>
-            )}
-            <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
-              {receiptData?.receiptDate || ''}
-            </Text>
-            <View style={styles.separator} />
+        <View style={styles.summaryCard}>
+                       <View style={styles.summaryHeader}>
+              {!isSharing && <Text style={styles.summaryTitle}>TOTAL AMOUNT</Text>}
+              {!isSharing && (
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => {
+                    console.log('Edit button pressed - receiptData:', receiptData);
+                    if (navigation) {
+                      const navigationParams = { 
+                        basicData: {
+                          receiptName: receiptData?.receiptTitle || '',
+                          date: receiptData?.receiptDate || '',
+                          tips: receiptData?.tip?.toString() || '0',
+                          tax: receiptData?.tax?.toString() || '0',
+                          total: receiptData?.totalAmount || 0
+                        },
+                        receiptData,
+                        isEditing: true 
+                      };
+                      console.log('Navigation params:', navigationParams);
+                      navigation.navigate('AddReceipt', navigationParams);
+                    }
+                  }}
+                >
+                  <Ionicons name="create-outline" size={20} color="#007AFF" />
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+           
+           {/* Receipt Name */}
+           {receiptData?.receiptTitle && (
+             <View style={styles.receiptNameRow}>
+               <Text style={styles.receiptName}>{receiptData.receiptTitle}</Text>
+             </View>
+           )}
+           
+           <View style={styles.summaryRow}>
+             <Text style={styles.summaryValue}>${totalReceiptAmount.toFixed(2)}</Text>
+           </View>
+           <View style={styles.summaryRow}>
+             <Text style={styles.summaryLabel}>({friendBills.length} friends)</Text>
+           </View>
+         </View>
+        
+        {/* Friend Bills */}
+        <View style={styles.friendBillsSection}>
+          <Text style={[styles.sectionTitle, { fontSize: Math.round(18 * contentScale) }]}>BREAKDOWN</Text>
+          <View style={styles.friendBillsContainer}>
+            {friendBills.map((friendBill, index) => renderFriendBill(friendBill, index))}
           </View>
-
-          {/* Friend Blocks */}
-          <View style={styles.friendBlocks}>
-            {friendBills.map((bill) => {
-              const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-              const maxChars = 48; // wrap point per line
-              const lines: string[] = [];
-              let current = '';
-              for (const p of parts) {
-                if (current.length === 0) current = p;
-                else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-                else {
-                  lines.push(current);
-                  current = p;
-                }
-              }
-              if (current.length) lines.push(current);
-
-              return (
-                <View key={bill.friend.id} style={styles.friendBlock}>
-                  <View style={styles.friendRow}>
-                    <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      {bill.friend.name}
-                    </Text>
-                    <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      ${bill.totalAmount.toFixed(2)}
-                    </Text>
-                  </View>
-                  {lines.map((ln, idx) => (
-                    <Text
-                      key={idx}
-                      style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
-                    >
-                      {ln}
-                    </Text>
-                  ))}
-                  <View style={styles.dotRule} />
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Grand Total */}
-          <View style={styles.totalRowBW}>
-            <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
-            <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
-              ${totalReceiptAmount.toFixed(2)}
-            </Text>
-          </View>
-        </ScrollView>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -439,14 +395,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editHeaderButton: {
-    position: 'absolute',
-    right: 64,
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   shareButtonDisabled: {
     opacity: 0.5,
   },
@@ -471,14 +419,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    // Auto-height up to a maximum; eliminates inner white space while
-    // preventing the receipt from growing beyond the viewport
-    maxHeight: screenDimensions.height - 120,
-    // Add margins so it looks like a floating ticket
-    width: screenDimensions.width - 32,
-    marginHorizontal: 16,
-    marginTop: 12,
-    alignSelf: 'center',
+    height: screenDimensions.height - 120, // Fixed height minus header space
+    width: screenDimensions.width,
     // Ensure proper rendering for capture
     overflow: 'hidden',
     // Add shadow and border for better visual capture
@@ -487,106 +429,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  receiptScroll: {
-    // let the scroll view size itself to the container; no flex so it doesn't collapse
-  },
-  receiptScrollContent: {
-    paddingBottom: 8,
-  },
-  receiptHeaderArea: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  receiptTitle: {
-    fontWeight: 'bold',
-    color: 'black',
-    textAlign: 'center',
-  },
-  receiptDate: {
-    color: '#333',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: 'black',
-    width: '100%',
-    marginTop: 8,
-    marginBottom: 8,
-  },
-  friendBlocks: {
-    // Let content define height so TOTAL sits directly under last friend
-  },
-  friendBlock: {
-    marginBottom: 8,
-  },
-  friendRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  friendNameBW: {
-    fontWeight: 'bold',
-    color: 'black',
-  },
-  friendAmountBW: {
-    fontWeight: 'bold',
-    color: 'black',
-  },
-  itemLineBW: {
-    color: '#666',
-    marginTop: 2,
-  },
-  itemsInlineBW: {
-    color: '#666',
-    marginTop: 2,
-    flexWrap: 'wrap',
-  },
-  dotRule: {
-    height: 1,
-    borderBottomColor: '#999',
-    borderBottomWidth: 1,
-    borderStyle: 'dotted',
-    marginTop: 6,
-  },
-  totalRowBW: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 2,
-    borderTopColor: 'black',
-    paddingTop: 8,
-    marginTop: 8,
-  },
-  totalLabelBW: {
-    fontWeight: 'bold',
-    color: 'black',
-  },
-  totalValueBW: {
-    fontWeight: 'bold',
-    color: 'black',
-  },
-  placeholderContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'black',
-    borderStyle: 'dashed',
-  },
-  placeholderTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: 'black',
-    marginBottom: 8,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: '#555',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 12,
   },
   summaryCard: {
     backgroundColor: 'white',

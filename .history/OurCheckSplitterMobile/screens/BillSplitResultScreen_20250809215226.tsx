@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const insets = useSafeAreaInsets();
   const { receiptData } = route?.params || {};
   const receiptRef = useRef<View>(null);
-  const scrollRef = useRef<ScrollView>(null);
   const [isSharing, setIsSharing] = useState(false);
   
   const calculateFriendBills = () => {
@@ -129,35 +128,8 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   
   const friendBills = calculateFriendBills();
   const totalReceiptAmount = friendBills.reduce((sum, bill) => sum + bill.totalAmount, 0);
-  const friendCount = friendBills.length;
-
-  // Estimate total lines (after wrapping) to adapt scaling
-  const estimatedLines = useMemo(() => {
-    const maxChars = 48;
-    let lines = 4; // title + date + separator + total row
-    friendBills.forEach((bill) => {
-      lines += 1; // friend header
-      const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-      let current = '';
-      let wrapped = 0;
-      for (const p of parts) {
-        if (current.length === 0) current = p;
-        else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-        else { wrapped += 1; current = p; }
-      }
-      if (current.length) wrapped += 1;
-      lines += wrapped;
-    });
-    return lines;
-  }, [friendBills]);
-
-  const contentScale = useMemo(() => {
-    if (friendCount <= 3) return 1.12;
-    if (friendCount <= 5) return 1.04;
-    const target = 26;
-    const s = target / Math.max(1, estimatedLines);
-    return Math.max(0.7, Math.min(1, s));
-  }, [friendCount, estimatedLines]);
+  // Keep typography consistent (no auto down-scaling). We'll wrap long lines instead.
+  const contentScale = 1;
   
   const handleGoBack = () => {
     if (navigation) {
@@ -188,8 +160,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               console.log('Capturing receipt at:', currentTime);
             }
             
-            const target: any = scrollRef.current || receiptRef.current;
-            const uri = await captureRef(target, {
+            const uri = await captureRef(receiptRef, {
               format: 'png',
               quality: 1.0,
               result: 'tmpfile',
@@ -212,7 +183,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             
             // Try alternative capture method
             try {
-              const alternativeUri = await captureRef(target, {
+              const alternativeUri = await captureRef(receiptRef, {
                 format: 'png',
                 quality: 0.8,
                 result: 'tmpfile',
@@ -330,71 +301,69 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         </TouchableOpacity>
       </View>
       
-      {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
+      {/* Receipt Summary - Fixed Size Container (reset for new build) */}
       <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
-        <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
-          {/* Receipt Title and Date */}
-          <View style={styles.receiptHeaderArea}>
-            {!!receiptData?.receiptTitle && (
-              <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
-                {receiptData.receiptTitle}
-              </Text>
-            )}
-            <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
-              {receiptData?.receiptDate || ''}
+        {/* Receipt Title and Date */}
+        <View style={styles.receiptHeaderArea}>
+          {!!receiptData?.receiptTitle && (
+            <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
+              {receiptData.receiptTitle}
             </Text>
-            <View style={styles.separator} />
-          </View>
+          )}
+          <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
+            {receiptData?.receiptDate || ''}
+          </Text>
+          <View style={styles.separator} />
+        </View>
 
-          {/* Friend Blocks */}
-          <View style={styles.friendBlocks}>
-            {friendBills.map((bill) => {
-              const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-              const maxChars = 48; // wrap point per line
-              const lines: string[] = [];
-              let current = '';
-              for (const p of parts) {
-                if (current.length === 0) current = p;
-                else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-                else {
-                  lines.push(current);
-                  current = p;
-                }
+        {/* Friend Blocks */}
+        <View style={styles.friendBlocks}>
+          {friendBills.map((bill) => {
+            const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
+            const maxChars = 48; // wrap point per line
+            const lines: string[] = [];
+            let current = '';
+            for (const p of parts) {
+              if (current.length === 0) current = p;
+              else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
+              else {
+                lines.push(current);
+                current = p;
               }
-              if (current.length) lines.push(current);
+            }
+            if (current.length) lines.push(current);
 
-              return (
-                <View key={bill.friend.id} style={styles.friendBlock}>
-                  <View style={styles.friendRow}>
-                    <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      {bill.friend.name}
-                    </Text>
-                    <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      ${bill.totalAmount.toFixed(2)}
-                    </Text>
-                  </View>
-                  {lines.map((ln, idx) => (
-                    <Text
-                      key={idx}
-                      style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
-                    >
-                      {ln}
-                    </Text>
-                  ))}
-                  <View style={styles.dotRule} />
+            return (
+              <View key={bill.friend.id} style={styles.friendBlock}>
+                <View style={styles.friendRow}>
+                  <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
+                    {bill.friend.name}
+                  </Text>
+                  <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
+                    ${bill.totalAmount.toFixed(2)}
+                  </Text>
                 </View>
-              );
-            })}
-          </View>
+                {lines.map((ln, idx) => (
+                  <Text
+                    key={idx}
+                    style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
+                  >
+                    {ln}
+                  </Text>
+                ))}
+                <View style={styles.dotRule} />
+              </View>
+            );
+          })}
+        </View>
 
-          {/* Grand Total */}
-          <View style={styles.totalRowBW}>
-            <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
-            <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
-              ${totalReceiptAmount.toFixed(2)}
-            </Text>
-          </View>
-        </ScrollView>
+        {/* Grand Total */}
+        <View style={styles.totalRowBW}>
+          <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
+          <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
+            ${totalReceiptAmount.toFixed(2)}
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -471,9 +440,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    // Auto-height up to a maximum; eliminates inner white space while
-    // preventing the receipt from growing beyond the viewport
-    maxHeight: screenDimensions.height - 120,
+    height: screenDimensions.height - 120, // Fixed height minus header space
     // Add margins so it looks like a floating ticket
     width: screenDimensions.width - 32,
     marginHorizontal: 16,
@@ -487,12 +454,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  receiptScroll: {
-    // let the scroll view size itself to the container; no flex so it doesn't collapse
-  },
-  receiptScrollContent: {
-    paddingBottom: 8,
   },
   receiptHeaderArea: {
     alignItems: 'center',
@@ -516,7 +477,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   friendBlocks: {
-    // Let content define height so TOTAL sits directly under last friend
+    flex: 1,
   },
   friendBlock: {
     marginBottom: 8,
