@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 
 interface BillSplitResultScreenProps {
@@ -60,7 +61,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const { receiptData } = route?.params || {};
   const receiptRef = useRef<View>(null);
   const scrollRef = useRef<ScrollView>(null);
-  const fullReceiptRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
   
   const calculateFriendBills = () => {
@@ -167,28 +167,38 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
 
   const handleShareReceipt = async () => {
     try {
-      setIsSharing(true);
-      
-      // Check if sharing is available
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (!isAvailable) {
-        Alert.alert('Error', 'Sharing is not available on this device');
-        setIsSharing(false);
-        return;
-      }
+      if (receiptRef.current) {
+        setIsSharing(true);
+        
+        // Check if sharing is available
+        const isAvailable = await Sharing.isAvailableAsync();
+        if (!isAvailable) {
+          Alert.alert('Error', 'Sharing is not available on this device');
+          setIsSharing(false);
+          return;
+        }
 
-      if (fullReceiptRef.current) {
-        // Wait for the view to be fully rendered and stable
+        // Add a longer delay to ensure the view is fully rendered and all content is visible
         setTimeout(async () => {
           try {
-            // Capture the full receipt component (rendered off-screen)
-            const uri = await captureRef(fullReceiptRef.current, {
+            // First, scroll to top to ensure all content is visible
+            if (receiptRef.current) {
+              // Force a re-render by updating state
+              const currentTime = Date.now();
+              console.log('Capturing receipt at:', currentTime);
+            }
+            
+            const target: any = scrollRef.current || receiptRef.current;
+            const uri = await captureRef(target, {
               format: 'png',
-              quality: 0.9,
+              quality: 1.0,
               result: 'tmpfile',
+              snapshotContentContainer: true, // Changed to true to capture the entire content
+              height: undefined, // Let it determine height automatically
+              width: undefined, // Let it determine width automatically
             });
             
-            console.log('Captured full receipt image URI:', uri);
+            console.log('Captured image URI:', uri);
             
             // Share the image
             await Sharing.shareAsync(uri, {
@@ -196,40 +206,40 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               dialogTitle: 'Share Receipt',
             });
             
-            console.log('Full receipt shared successfully as image');
+            console.log('Receipt shared successfully');
           } catch (captureError) {
-            console.error('Full receipt capture failed:', captureError);
+            console.error('Capture error:', captureError);
             
-            // Fallback: Try with JPEG format
+            // Try alternative capture method
             try {
-              const fallbackUri = await captureRef(fullReceiptRef.current, {
-                format: 'jpg',
+              const alternativeUri = await captureRef(target, {
+                format: 'png',
                 quality: 0.8,
                 result: 'tmpfile',
+                snapshotContentContainer: false,
               });
               
-              await Sharing.shareAsync(fallbackUri, {
-                mimeType: 'image/jpeg',
+              console.log('Alternative capture successful:', alternativeUri);
+              await Sharing.shareAsync(alternativeUri, {
+                mimeType: 'image/png',
                 dialogTitle: 'Share Receipt',
               });
               
-              console.log('Full receipt shared successfully (JPEG fallback)');
-            } catch (fallbackError) {
-              console.error('All capture methods failed:', fallbackError);
-              Alert.alert('Error', 'Unable to capture receipt image. Please try again later.');
+              console.log('Receipt shared successfully (alternative method)');
+            } catch (alternativeError) {
+              console.error('Alternative capture also failed:', alternativeError);
+              Alert.alert('Error', 'Failed to capture receipt. Please try again.');
             }
           } finally {
             setIsSharing(false);
           }
-        }, 1000);
+        }, 1000); // Increased delay to 1000ms for better reliability
       } else {
         Alert.alert('Error', 'Receipt content not available');
-        setIsSharing(false);
       }
     } catch (error) {
       console.error('Share error:', error);
       Alert.alert('Error', 'Failed to share receipt');
-      setIsSharing(false);
     }
   };
   
@@ -386,75 +396,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
           </View>
         </ScrollView>
       </View>
-      
-      {/* Hidden full receipt for sharing - rendered off-screen */}
-      <View 
-        ref={fullReceiptRef} 
-        style={styles.hiddenFullReceipt}
-        collapsable={false}
-      >
-        {/* Receipt Title and Date */}
-        <View style={styles.receiptHeaderArea}>
-          {!!receiptData?.receiptTitle && (
-            <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
-              {receiptData.receiptTitle}
-            </Text>
-          )}
-          <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
-            {receiptData?.receiptDate || ''}
-          </Text>
-          <View style={styles.separator} />
-        </View>
-
-        {/* Friend Blocks */}
-        <View style={styles.friendBlocks}>
-          {friendBills.map((bill) => {
-            const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-            const maxChars = 48;
-            const lines: string[] = [];
-            let current = '';
-            for (const p of parts) {
-              if (current.length === 0) current = p;
-              else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-              else {
-                lines.push(current);
-                current = p;
-              }
-            }
-            if (current.length) lines.push(current);
-
-            return (
-              <View key={bill.friend.id} style={styles.friendBlock}>
-                <View style={styles.friendRow}>
-                  <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
-                    {bill.friend.name}
-                  </Text>
-                  <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
-                    ${bill.totalAmount.toFixed(2)}
-                  </Text>
-                </View>
-                {lines.map((ln, idx) => (
-                  <Text
-                    key={idx}
-                    style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
-                  >
-                    {ln}
-                  </Text>
-                ))}
-                <View style={styles.dotRule} />
-              </View>
-            );
-          })}
-        </View>
-
-        {/* Grand Total */}
-        <View style={styles.totalRowBW}>
-          <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
-          <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
-            ${totalReceiptAmount.toFixed(2)}
-          </Text>
-        </View>
-      </View>
     </SafeAreaView>
   );
 };
@@ -538,21 +479,20 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 12,
     alignSelf: 'center',
-    // Ensure proper rendering for capture with solid background
+    // Ensure proper rendering for capture
     overflow: 'hidden',
-    // Add border for better visual definition
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    // Remove shadow as it can cause transparency issues during capture
+    // Add shadow and border for better visual capture
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   receiptScroll: {
     // let the scroll view size itself to the container; no flex so it doesn't collapse
-    backgroundColor: 'white', // Ensure solid white background
   },
   receiptScrollContent: {
     paddingBottom: 8,
-    backgroundColor: 'white', // Ensure solid white background for content
   },
   receiptHeaderArea: {
     alignItems: 'center',
@@ -802,19 +742,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 12,
-  },
-  hiddenFullReceipt: {
-    position: 'absolute',
-    left: -10000, // Move off-screen so it's not visible to user
-    top: 0,
-    backgroundColor: 'white',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    width: screenDimensions.width - 32,
-    // No height constraint - let it expand to full content
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
   },
 });
 
