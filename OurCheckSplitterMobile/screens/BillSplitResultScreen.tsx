@@ -320,73 +320,86 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         </TouchableOpacity>
       </View>
       
-      {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
-      <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
-        <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
-          {/* Receipt Title and Date */}
-          <View style={styles.receiptHeaderArea}>
-            {!!receiptData?.receiptTitle && (
-              <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
-                {receiptData.receiptTitle}
+      {/* Content Area with Receipt and Buttons */}
+      <View style={styles.contentArea}>
+        {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
+        <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
+          <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
+            {/* Receipt Title and Date */}
+            <View style={styles.receiptHeaderArea}>
+              {!!receiptData?.receiptTitle && (
+                <Text style={[styles.receiptTitle, { fontSize: Math.round(20 * contentScale) }]}>
+                  {receiptData.receiptTitle}
+                </Text>
+              )}
+              <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
+                {receiptData?.receiptDate || ''}
               </Text>
-            )}
-            <Text style={[styles.receiptDate, { fontSize: Math.round(12 * contentScale) }]}>
-              {receiptData?.receiptDate || ''}
-            </Text>
-            <View style={styles.separator} />
-          </View>
+              <View style={styles.separator} />
+            </View>
 
-          {/* Friend Blocks */}
-          <View style={styles.friendBlocks}>
-            {friendBills.map((bill) => {
-              const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
-              const maxChars = 48; // wrap point per line
-              const lines: string[] = [];
-              let current = '';
-              for (const p of parts) {
-                if (current.length === 0) current = p;
-                else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
-                else {
-                  lines.push(current);
-                  current = p;
+            {/* Friend Blocks */}
+            <View style={styles.friendBlocks}>
+              {friendBills.map((bill) => {
+                const parts = bill.items.map((it) => `${it.itemName} ($${it.totalPrice.toFixed(2)})`);
+                const maxChars = 48; // wrap point per line
+                const lines: string[] = [];
+                let current = '';
+                for (const p of parts) {
+                  if (current.length === 0) current = p;
+                  else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
+                  else {
+                    lines.push(current);
+                    current = p;
+                  }
                 }
-              }
-              if (current.length) lines.push(current);
+                if (current.length) lines.push(current);
 
-              return (
-                <View key={bill.friend.id} style={styles.friendBlock}>
-                  <View style={styles.friendRow}>
-                    <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      {bill.friend.name}
-                    </Text>
-                    <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
-                      ${bill.totalAmount.toFixed(2)}
-                    </Text>
+                return (
+                  <View key={bill.friend.id} style={styles.friendBlock}>
+                    <View style={styles.friendRow}>
+                      <Text style={[styles.friendNameBW, { fontSize: Math.round(16 * contentScale) }]}>
+                        {bill.friend.name}
+                      </Text>
+                      <Text style={[styles.friendAmountBW, { fontSize: Math.round(16 * contentScale) }]}>
+                        ${bill.totalAmount.toFixed(2)}
+                      </Text>
+                    </View>
+                    {lines.map((ln, idx) => (
+                      <Text
+                        key={idx}
+                        style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
+                      >
+                        {ln}
+                      </Text>
+                    ))}
+                    <View style={styles.dotRule} />
                   </View>
-                  {lines.map((ln, idx) => (
-                    <Text
-                      key={idx}
-                      style={[styles.itemsInlineBW, { fontSize: Math.round(12 * contentScale), lineHeight: Math.round(16 * contentScale) }]}
-                    >
-                      {ln}
-                    </Text>
-                  ))}
-                  <View style={styles.dotRule} />
-                </View>
-              );
-            })}
-          </View>
+                );
+              })}
+            </View>
 
-          {/* Grand Total */}
-          <View style={styles.totalRowBW}>
-            <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
-            <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
-              ${totalReceiptAmount.toFixed(2)}
-            </Text>
-          </View>
-        </ScrollView>
+            {/* Grand Total */}
+            <View style={styles.totalRowBW}>
+              <Text style={[styles.totalLabelBW, { fontSize: Math.round(18 * contentScale) }]}>TOTAL</Text>
+              <Text style={[styles.totalValueBW, { fontSize: Math.round(18 * contentScale) }]}>
+                ${totalReceiptAmount.toFixed(2)}
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+        
+        {/* Action Buttons - Fixed at bottom */}
+        <View style={styles.actionButtons}>
+          <TouchableOpacity style={styles.calculateChangeButton} onPress={() => {}}>
+            <Text style={styles.calculateChangeButtonText}>Calculate Change</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.saveButtonText}>Save</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      
+
       {/* Hidden full receipt for sharing - rendered off-screen */}
       <View 
         ref={fullReceiptRef} 
@@ -526,13 +539,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'black',
   },
+  contentArea: {
+    flex: 1,
+    flexDirection: 'column',
+  },
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    // Auto-height up to a maximum; eliminates inner white space while
-    // preventing the receipt from growing beyond the viewport
-    maxHeight: screenDimensions.height - 120,
+    // Allow flexible height but ensure buttons stay visible
+    flex: 1,
     // Add margins so it looks like a floating ticket
     width: screenDimensions.width - 32,
     marginHorizontal: 16,
@@ -815,6 +831,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+    gap: 12,
+  },
+  calculateChangeButton: {
+    flex: 1,
+    backgroundColor: '#F0F8FF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calculateChangeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
   },
 });
 
