@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ipconfig)",
+      "Bash(dotnet build)",
+      "Bash(del:*)",
+      "Bash(rm:*)",
+      "Bash(dotnet run:*)",
+      "Bash(taskkill:*)",
+      "Bash(Stop-Process -Id 27076 -Force)",
+      "Bash(powershell:*)",
+      "Bash(dotnet ef dbcontext:*)",
+      "Bash(npm install:*)"
+    ],
+    "deny": []
+  }
+}

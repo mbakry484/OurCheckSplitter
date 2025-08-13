@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,21 @@ import {
   Image,
   SafeAreaView,
   Animated,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { api } from '../services/api';
+import { 
+  FriendDto, 
+  ReceiptResponseDto, 
+  convertFriendToHomeFormat, 
+  convertReceiptToHomeFormat,
+  HomeScreenFriend,
+  HomeScreenReceipt,
+} from '../types/api';
 
 interface FriendReceipt {
   id: string;
@@ -49,154 +60,71 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const insets = useSafeAreaInsets();
   const [fabMenuOpen, setFabMenuOpen] = useState(false);
   const fabAnimation = useState(new Animated.Value(0))[0];
+  
+  // API state management
+  const [friends, setFriends] = useState<HomeScreenFriend[]>([]);
+  const [recentReceipts, setRecentReceipts] = useState<HomeScreenReceipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Mock data - replace with actual data later (matching FriendsScreen data)
-  const friends: Friend[] = [
-    {
-      id: '1',
-      name: 'John',
-      avatar: '👨',
-      receipts: ['Dinner at Italian Place', 'Pizza Lunch', 'Gas Station', 'Breakfast at Cafe', 'Movie Night'],
-      totalPaid: 89.75,
-      detailedReceipts: [
-        { id: '1', title: 'Dinner at Italian Place', date: 'Oct 30, 2023', totalAmount: 51.00, friendPaidAmount: 25.50, participants: ['You', 'Sarah'] },
-        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.92, participants: ['You', 'Emma', 'Alex'] },
-        { id: '6', title: 'Gas Station', date: 'Oct 18, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'Sarah'] },
-        { id: '7', title: 'Breakfast at Cafe', date: 'Oct 15, 2023', totalAmount: 28.90, friendPaidAmount: 14.45, participants: ['You', 'Emma'] },
-        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 16.28, participants: ['You', 'Sarah', 'Mike'] },
-      ]
-    },
-    {
-      id: '2',
-      name: 'Sarah',
-      avatar: '👩',
-      receipts: ['Dinner at Italian Place', 'Gas Station', 'Movie Night'],
-      totalPaid: 45.20,
-      detailedReceipts: [
-        { id: '1', title: 'Dinner at Italian Place', date: 'Oct 30, 2023', totalAmount: 51.00, friendPaidAmount: 25.50, participants: ['You', 'John'] },
-        { id: '6', title: 'Gas Station', date: 'Oct 18, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'John'] },
-        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 16.00, participants: ['You', 'John', 'Mike'] },
-      ]
-    },
-    {
-      id: '3',
-      name: 'Mike',
-      avatar: '👨‍💼',
-      receipts: ['Movie Night', 'Uber Ride', 'Lunch Meeting', 'Coffee Break', 'Team Dinner', 'Office Supplies', 'Taxi Ride', 'Snacks'],
-      totalPaid: 156.80,
-      detailedReceipts: [
-        { id: '4', title: 'Movie Night', date: 'Oct 22, 2023', totalAmount: 48.00, friendPaidAmount: 15.72, participants: ['You', 'John', 'Sarah'] },
-        { id: '8', title: 'Uber Ride', date: 'Oct 12, 2023', totalAmount: 18.50, friendPaidAmount: 9.25, participants: ['You', 'Alex'] },
-        { id: '9', title: 'Lunch Meeting', date: 'Oct 10, 2023', totalAmount: 67.80, friendPaidAmount: 22.60, participants: ['You', 'Sarah', 'Lisa'] },
-        { id: '10', title: 'Coffee Break', date: 'Oct 8, 2023', totalAmount: 15.40, friendPaidAmount: 7.70, participants: ['You', 'Emma'] },
-        { id: '11', title: 'Team Dinner', date: 'Oct 5, 2023', totalAmount: 89.50, friendPaidAmount: 29.83, participants: ['You', 'Lisa', 'David'] },
-        { id: '12', title: 'Office Supplies', date: 'Oct 3, 2023', totalAmount: 45.20, friendPaidAmount: 22.60, participants: ['You', 'Lisa'] },
-        { id: '13', title: 'Taxi Ride', date: 'Sep 30, 2023', totalAmount: 25.80, friendPaidAmount: 12.90, participants: ['You', 'Alex'] },
-        { id: '14', title: 'Snacks', date: 'Sep 28, 2023', totalAmount: 32.40, friendPaidAmount: 16.20, participants: ['You', 'Emma'] },
-      ]
-    },
-    {
-      id: '4',
-      name: 'Emma',
-      avatar: '👩‍🦰',
-      receipts: ['Groceries', 'Pizza Lunch', 'Breakfast at Cafe'],
-      totalPaid: 32.15,
-      detailedReceipts: [
-        { id: '2', title: 'Groceries', date: 'Oct 29, 2023', totalAmount: 25.98, friendPaidAmount: 12.99, participants: ['You'] },
-        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.91, participants: ['You', 'John', 'Alex'] },
-        { id: '7', title: 'Breakfast at Cafe', date: 'Oct 15, 2023', totalAmount: 28.90, friendPaidAmount: 14.45, participants: ['You', 'John'] },
-      ]
-    },
-    {
-      id: '5',
-      name: 'Alex',
-      avatar: '👨‍🎓',
-      receipts: ['Coffee with Alex', 'Pizza Lunch', 'Uber Ride'],
-      totalPaid: 28.90,
-      detailedReceipts: [
-        { id: '3', title: 'Coffee with Alex', date: 'Oct 24, 2023', totalAmount: 11.50, friendPaidAmount: 5.75, participants: ['You'] },
-        { id: '5', title: 'Pizza Lunch', date: 'Oct 20, 2023', totalAmount: 32.75, friendPaidAmount: 10.92, participants: ['You', 'John', 'Emma'] },
-        { id: '8', title: 'Uber Ride', date: 'Oct 12, 2023', totalAmount: 18.50, friendPaidAmount: 9.25, participants: ['You', 'Mike'] },
-      ]
-    },
-  ];
+  // Load data from API
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const recentReceipts: Receipt[] = [
-    {
-      id: '1',
-      title: 'Dinner at Italian Place',
-      date: 'Oct 30, 2023',
-      totalAmount: 51.00,
-      userPaidAmount: 25.50,
-      type: 'paid',
-      participants: ['John', 'Sarah'],
-    },
-    {
-      id: '2',
-      title: 'Groceries',
-      date: 'Oct 29, 2023',
-      totalAmount: 25.98,
-      userPaidAmount: 12.99,
-      type: 'paid',
-      participants: ['Emma'],
-    },
-    {
-      id: '3',
-      title: 'Coffee with Alex',
-      date: 'Oct 24, 2023',
-      totalAmount: 11.50,
-      userPaidAmount: 5.75,
-      type: 'paid',
-      participants: ['Alex'],
-    },
-    {
-      id: '4',
-      title: 'Movie Night',
-      date: 'Oct 22, 2023',
-      totalAmount: 48.00,
-      userPaidAmount: 16.00,
-      type: 'paid',
-      participants: ['John', 'Sarah', 'Mike'],
-    },
-    {
-      id: '5',
-      title: 'Pizza Lunch',
-      date: 'Oct 20, 2023',
-      totalAmount: 32.75,
-      userPaidAmount: 32.75,
-      type: 'paid',
-      participants: ['John', 'Emma', 'Alex'],
-    },
-    {
-      id: '6',
-      title: 'Gas Station',
-      date: 'Oct 18, 2023',
-      totalAmount: 45.20,
-      userPaidAmount: 22.60,
-      type: 'paid',
-      participants: ['John', 'Sarah'],
-    },
-    {
-      id: '7',
-      title: 'Breakfast at Cafe',
-      date: 'Oct 15, 2023',
-      totalAmount: 28.90,
-      userPaidAmount: 14.45,
-      type: 'paid',
-      participants: ['John', 'Emma'],
-    },
-    {
-      id: '8',
-      title: 'Uber Ride',
-      date: 'Oct 12, 2023',
-      totalAmount: 18.50,
-      userPaidAmount: 9.25,
-      type: 'paid',
-      participants: ['Mike', 'Alex'],
-    },
-  ];
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const totalYouPaid = 31.25;
+      // First test basic connectivity
+      console.log('Testing API connectivity...');
+      try {
+        const testResponse = await api.test.ping();
+        console.log('API connectivity test successful:', testResponse);
+        
+        // Debug: Check what data exists in the database
+        const debugData = await api.test.debugData();
+        console.log('Debug data from database:', debugData);
+      } catch (testError) {
+        console.error('API connectivity test failed:', testError);
+        // Continue anyway, maybe it's just the test endpoint
+      }
+
+      // Load friends and receipts in parallel
+      const [friendsResponse, receiptsResponse] = await Promise.all([
+        api.friends.getFriends(),
+        api.receipts.getReceipts(),
+      ]);
+
+      // Convert API responses to HomeScreen format
+      const convertedFriends = friendsResponse.map((friend: FriendDto) => 
+        convertFriendToHomeFormat(friend)
+      );
+      
+      const convertedReceipts = receiptsResponse.map((receipt: ReceiptResponseDto) => 
+        convertReceiptToHomeFormat(receipt)
+      );
+
+      setFriends(convertedFriends);
+      setRecentReceipts(convertedReceipts);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError('Failed to load data. Please check your connection and try again.');
+      
+      // Show error alert
+      Alert.alert(
+        'Connection Error',
+        'Failed to load data from server. Make sure your API is running.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate total paid by user
+  const totalYouPaid = recentReceipts.reduce((sum, receipt) => sum + receipt.userPaidAmount, 0);
 
   const handleSeeAllFriends = () => {
     if (navigation) {
@@ -257,13 +185,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     handleAddReceipt();
   };
 
-  const handleFriendPress = (friend: Friend) => {
+  const handleFriendPress = (friend: HomeScreenFriend) => {
     if (navigation) {
       navigation.navigate('Friends', { selectedFriend: friend });
     }
   };
 
-  const renderFriend = (friend: Friend) => (
+  const renderFriend = (friend: HomeScreenFriend) => (
     <TouchableOpacity key={friend.id} style={styles.friendItem} onPress={() => handleFriendPress(friend)}>
       <View style={styles.friendAvatar}>
         <Text style={styles.avatarText}>{friend.avatar}</Text>
@@ -273,7 +201,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     </TouchableOpacity>
   );
 
-  const renderReceipt = (receipt: Receipt) => (
+  const renderReceipt = (receipt: HomeScreenReceipt) => (
     <TouchableOpacity key={receipt.id} style={styles.receiptItem}>
       <View style={styles.receiptLeft}>
         <Text style={styles.receiptTitle}>{receipt.title}</Text>
@@ -305,11 +233,34 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     </TouchableOpacity>
   );
 
+  // Show loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
+          <Text style={styles.headerTitle}>SplitWise</Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading your data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
         <Text style={styles.headerTitle}>SplitWise</Text>
+        {error && (
+          <TouchableOpacity 
+            style={styles.retryButton} 
+            onPress={loadData}
+          >
+            <Ionicons name="refresh-outline" size={20} color="#FF6B6B" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -322,7 +273,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsList}>
-            {friends.map(renderFriend)}
+            {friends.length > 0 ? (
+              friends.map(renderFriend)
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No friends yet. Add some receipts to get started!</Text>
+              </View>
+            )}
           </ScrollView>
         </View>
 
@@ -334,12 +291,23 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          {recentReceipts.slice(0, 5).map(renderReceipt)}
-          {recentReceipts.length > 5 && (
-            <TouchableOpacity style={styles.viewMoreButton} onPress={handleViewAllReceipts}>
-              <Text style={styles.viewMoreText}>View More ({recentReceipts.length - 5} more)</Text>
-              <Ionicons name="chevron-forward" size={16} color="#007AFF" />
-            </TouchableOpacity>
+          {recentReceipts.length > 0 ? (
+            <>
+              {recentReceipts.slice(0, 5).map(renderReceipt)}
+              {recentReceipts.length > 5 && (
+                <TouchableOpacity style={styles.viewMoreButton} onPress={handleViewAllReceipts}>
+                  <Text style={styles.viewMoreText}>View More ({recentReceipts.length - 5} more)</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#007AFF" />
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No receipts yet. Start by adding your first receipt!</Text>
+              <TouchableOpacity style={styles.emptyStateButton} onPress={handleAddReceipt}>
+                <Text style={styles.emptyStateButtonText}>Add Receipt</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -740,6 +708,49 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    position: 'absolute',
+    right: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  emptyStateButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

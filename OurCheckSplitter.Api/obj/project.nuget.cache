@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8nf5hgU1fao=",
+  "dgSpecHash": "Modr7KNIJ/M=",
   "success": true,
-  "projectFilePath": "C:\\Users\\DELL\\source\\repos\\OurCheckSplitter\\OurCheckSplitter.Api\\OurCheckSplitter.Api.csproj",
+  "projectFilePath": "C:\\Users\\DELL\\source\\repos\\OurCheckSplitter\\ourchecksplitter.api\\OurCheckSplitter.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\DELL\\.nuget\\packages\\automapper\\12.0.1\\automapper.12.0.1.nupkg.sha512",
     "C:\\Users\\DELL\\.nuget\\packages\\automapper.extensions.microsoft.dependencyinjection\\12.0.1\\automapper.extensions.microsoft.dependencyinjection.12.0.1.nupkg.sha512",

@@ -14,9 +14,10 @@ import { Ionicons } from '@expo/vector-icons';
 
 interface ProfileScreenProps {
   navigation?: any;
+  onLogout?: () => void;
 }
 
-const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
+const ProfileScreen = ({ navigation, onLogout }: ProfileScreenProps) => {
   const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
@@ -73,8 +74,11 @@ const ProfileScreen = ({ navigation }: ProfileScreenProps) => {
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Sign Out', style: 'destructive', onPress: () => {
-          // Handle sign out logic here
-          Alert.alert('Signed Out', 'You have been successfully signed out.');
+          // Call the logout function passed from App
+          if (onLogout) {
+            onLogout();
+            Alert.alert('Signed Out', 'You have been successfully signed out.');
+          }
         }},
       ]
     );
