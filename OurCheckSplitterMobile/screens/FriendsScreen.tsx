@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
+  Alert,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { friendsApi } from '../services/api';
 
 interface Receipt {
   id: string;
@@ -39,6 +42,10 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [newFriendName, setNewFriendName] = useState('');
 
   // Handle navigation from HomeScreen
   useEffect(() => {
@@ -47,7 +54,72 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     }
   }, [route?.params?.selectedFriend]);
 
-  // Extended mock data for friends
+  // Load friends on component mount
+  useEffect(() => {
+    loadFriends();
+  }, []);
+
+  // Load friends from API
+  const loadFriends = async () => {
+    try {
+      setLoading(true);
+      const apiData = await friendsApi.getFriends();
+      console.log('Loaded friends from API:', apiData);
+      
+      // Map API data to component format if needed
+      if (Array.isArray(apiData)) {
+        const mappedFriends = apiData.map((friend: any) => ({
+          id: friend.id.toString(),
+          name: friend.name,
+          avatar: '👤', // Default avatar
+          receipts: friend.receipts?.map((r: any) => r.title || r.name) || [],
+          totalPaid: friend.receipts?.reduce((sum: number, r: any) => sum + (r.amount || 0), 0) || 0,
+          detailedReceipts: friend.receipts || []
+        }));
+        setFriends(mappedFriends);
+      } else {
+        // Fallback to mock data if API returns unexpected format
+        setFriends(getMockFriends());
+      }
+    } catch (error) {
+      console.error('Error loading friends:', error);
+      // Fallback to mock data on error
+      setFriends(getMockFriends());
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle adding a new friend
+  const handleAddFriend = () => {
+    setShowAddFriendModal(true);
+  };
+
+  // Handle saving the new friend
+  const handleSaveFriend = async () => {
+    if (newFriendName && newFriendName.trim()) {
+      try {
+        setLoading(true);
+        await friendsApi.createFriend(newFriendName.trim());
+        await loadFriends(); // Reload the friends list
+        setShowAddFriendModal(false);
+        setNewFriendName('');
+        Alert.alert('Success', `${newFriendName.trim()} has been added to your friends!`);
+      } catch (error) {
+        console.error('Error adding friend:', error);
+        Alert.alert('Error', 'Failed to add friend. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  // Handle canceling add friend
+  const handleCancelAddFriend = () => {
+    setShowAddFriendModal(false);
+    setNewFriendName('');
+  };
+
   const handleGoBack = () => {
     if (navigation) {
       navigation.goBack();
@@ -80,7 +152,8 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     setSelectedFriend(null);
   };
 
-  const friends: Friend[] = [
+  // Mock data function for fallback
+  const getMockFriends = (): Friend[] => [
     {
       id: '1',
       name: 'John',
@@ -306,8 +379,8 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
               <Ionicons name="arrow-back" size={24} color="#007AFF" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Friends</Text>
-            <TouchableOpacity style={styles.addButton}>
-              <Ionicons name="person-add-outline" size={24} color="#007AFF" />
+            <TouchableOpacity style={styles.addButton} onPress={handleAddFriend} disabled={loading}>
+              <Ionicons name="person-add-outline" size={24} color={loading ? "#ccc" : "#007AFF"} />
             </TouchableOpacity>
           </View>
 
@@ -360,6 +433,56 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           <Ionicons name="person-outline" size={24} color="#999" />
         </TouchableOpacity>
       </View>
+
+      {/* Add Friend Modal */}
+      <Modal
+        visible={showAddFriendModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCancelAddFriend}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add Friend</Text>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Friend's Name</Text>
+              <TextInput
+                style={styles.nameInput}
+                placeholder="Enter friend's name"
+                placeholderTextColor="#999"
+                value={newFriendName}
+                onChangeText={setNewFriendName}
+                autoFocus={true}
+                returnKeyType="done"
+                onSubmitEditing={handleSaveFriend}
+              />
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={handleCancelAddFriend}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveFriend}
+                disabled={loading || !newFriendName.trim()}
+              >
+                <Text style={[styles.saveButtonText, (!newFriendName.trim() || loading) && styles.disabledButtonText]}>
+                  {loading ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -674,6 +797,90 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 350,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    paddingTop: 24,
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+  },
+  modalBody: {
+    padding: 24,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#F8F9FA',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'white',
+  },
+  disabledButtonText: {
+    opacity: 0.5,
   },
 });
 

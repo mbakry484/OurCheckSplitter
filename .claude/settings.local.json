@@ -10,8 +10,10 @@
       "Bash(Stop-Process -Id 27076 -Force)",
       "Bash(powershell:*)",
       "Bash(dotnet ef dbcontext:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(Stop-Process -Id 21508 -Force)"
     ],
-    "deny": []
+    "deny": [],
+    "defaultMode": "acceptEdits"
   }
 }
