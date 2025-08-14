@@ -274,7 +274,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.friendsList}>
             {friends.length > 0 ? (
-              friends.map(renderFriend)
+              friends.slice(0, 5).map(renderFriend)
             ) : (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>No friends yet. Add some receipts to get started!</Text>

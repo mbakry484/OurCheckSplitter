@@ -51,13 +51,72 @@ namespace OurCheckSplitter.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllFriends()
+        public async Task<IActionResult> GetAllFriends(
+            [FromQuery] int? page = null,
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? searchTerm = null)
         {
             var user = HttpContext.Items["User"] as AppUser;
             if (user == null)
                 return Unauthorized();
 
-            var friends = await _context.Friends.Where(f => f.UserId == user.Id).ToListAsync();
+            // Debug logging
+            Console.WriteLine($"Friends query parameters - Page: {page}, PageSize: {pageSize}, SearchTerm: '{searchTerm}'");
+
+            // Check if pagination parameters are provided
+            bool usePagination = page.HasValue && pageSize.HasValue && page > 0 && pageSize > 0;
+            Console.WriteLine($"Friends using pagination: {usePagination}");
+
+            // If no pagination parameters, return all friends (backward compatibility)
+            if (!usePagination)
+            {
+                var allFriends = await _context.Friends.Where(f => f.UserId == user.Id).ToListAsync();
+                var allFriendDtos = new List<FriendDto>();
+                foreach (var friend in allFriends)
+                {
+                    // Find all receipts where this friend is assigned to any item assignment
+                    var receipts = await _context.Receipts
+                        .Where(r => r.UserId == user.Id && r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == friend.Id))))
+                        .Select(r => new ReceiptSummaryDto
+                        {
+                            Id = r.Id,
+                            Name = r.Name,
+                            Total = r.Total
+                        }).ToListAsync();
+                    allFriendDtos.Add(new FriendDto
+                    {
+                        Id = friend.Id,
+                        Name = friend.Name ?? string.Empty,
+                        Receipts = receipts
+                    });
+                }
+                return Ok(allFriendDtos);
+            }
+
+            // Build query with search filtering
+            var query = _context.Friends
+                .Where(f => f.UserId == user.Id)
+                .AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchTermLower = searchTerm.ToLower();
+                Console.WriteLine($"Applying friends search filter for: '{searchTermLower}'");
+                query = query.Where(f => f.Name != null && f.Name.ToLower().Contains(searchTermLower));
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+            Console.WriteLine($"Friends total count after filtering: {totalCount}");
+
+            // Apply ordering and pagination
+            var friends = await query
+                .OrderBy(f => f.Name) // Order alphabetically
+                .Skip((page!.Value - 1) * pageSize!.Value)
+                .Take(pageSize.Value)
+                .ToListAsync();
+
             var friendDtos = new List<FriendDto>();
             foreach (var friend in friends)
             {
@@ -77,7 +136,23 @@ namespace OurCheckSplitter.Api.Controllers
                     Receipts = receipts
                 });
             }
-            return Ok(friendDtos);
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize!.Value);
+
+            var paginatedResponse = new PaginatedResponseDto<FriendDto>
+            {
+                Items = friendDtos,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                CurrentPage = page!.Value,
+                PageSize = pageSize.Value,
+                HasNextPage = page.Value < totalPages,
+                HasPreviousPage = page.Value > 1
+            };
+
+            Console.WriteLine($"Returning {friendDtos.Count} friends, page {page.Value} of {totalPages}");
+
+            return Ok(paginatedResponse);
         }
 
         [HttpGet("{id}")]

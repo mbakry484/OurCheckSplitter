@@ -17,6 +17,7 @@ const AddReceiptWrapper = ({ navigation, route }: AddReceiptWrapperProps) => {
   const [basicData, setBasicData] = useState<BasicReceiptData | null>(
     isEditing ? route?.params?.basicData : null
   );
+  const [receiptId, setReceiptId] = useState<number | null>(null);
 
   const handleOverlayClose = () => {
     setShowOverlay(false);
@@ -26,9 +27,11 @@ const AddReceiptWrapper = ({ navigation, route }: AddReceiptWrapperProps) => {
     }
   };
 
-  const handleOverlayNext = (data: BasicReceiptData) => {
+  const handleOverlayNext = (data: BasicReceiptData, receiptId: number) => {
     setBasicData(data);
     setShowOverlay(false);
+    // Store receiptId to pass to AddReceiptScreen
+    setReceiptId(receiptId);
   };
 
   const handleEditBasicData = (currentData: BasicReceiptData) => {
@@ -54,6 +57,7 @@ const AddReceiptWrapper = ({ navigation, route }: AddReceiptWrapperProps) => {
     params: {
       ...route?.params,
       basicData,
+      receiptId,
       isEditing,
       receiptData: editingData,
     },

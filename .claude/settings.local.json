@@ -11,7 +11,11 @@
       "Bash(powershell:*)",
       "Bash(dotnet ef dbcontext:*)",
       "Bash(npm install:*)",
-      "Bash(Stop-Process -Id 21508 -Force)"
+      "Bash(Stop-Process -Id 21508 -Force)",
+      "Bash(npx expo start:*)",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dotnet build:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -674,7 +674,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
               </TouchableOpacity>
               
               <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
+be                style={[styles.modalButton, styles.saveButton]}
                 onPress={handleSaveFriend}
                 disabled={loading || !newFriendName.trim()}
               >

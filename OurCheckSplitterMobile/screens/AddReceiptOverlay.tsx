@@ -12,16 +12,18 @@ import {
   Alert,
   Dimensions,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { receiptApi } from '../services/api';
 
 interface AddReceiptOverlayProps {
   visible: boolean;
   onClose: () => void;
-  onNext: (basicData: BasicReceiptData) => void;
+  onNext: (basicData: BasicReceiptData, receiptId: number) => void;
   initialData?: BasicReceiptData | null;
 }
 
@@ -51,6 +53,7 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
   const [tipsIncluded, setTipsIncluded] = useState(initialData?.tipsIncluded || false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calendarPressed, setCalendarPressed] = useState(false);
+  const [isCreatingReceipt, setIsCreatingReceipt] = useState(false);
 
   // Update state when initialData changes (for editing)
   useEffect(() => {
@@ -65,7 +68,7 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
     }
   }, [initialData]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     // Validation
     if (!receiptName.trim()) {
       Alert.alert('Missing Information', 'Please enter a receipt name.');
@@ -89,7 +92,7 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
       return;
     }
 
-    // Pass data to next stage
+    // Prepare data for API
     const basicData: BasicReceiptData = {
       receiptName: receiptName.trim(),
       date: selectedDate.toLocaleDateString(),
@@ -100,7 +103,38 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
       tipsIncluded,
     };
 
-    onNext(basicData);
+    try {
+      setIsCreatingReceipt(true);
+
+      // Convert form data to API format
+      const receiptDto = {
+        name: receiptName.trim(),
+        tax: tax.trim() ? parseFloat(tax.trim()) : 0,
+        taxType: taxType === '%' ? 'percentage' : 'amount',
+        tips: tips.trim() ? parseFloat(tips.trim()) : 0,
+        total: finalTotalNum,
+        tipsIncludedInTotal: tipsIncluded,
+      };
+
+      console.log('Creating receipt with data:', receiptDto);
+
+      // Create receipt via API
+      const response = await receiptApi.createReceipt(receiptDto);
+      console.log('Receipt created successfully:', response);
+
+      // Pass both the basic data and the receipt ID to the next screen
+      onNext(basicData, response.id);
+
+    } catch (error) {
+      console.error('Failed to create receipt:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create receipt. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsCreatingReceipt(false);
+    }
   };
 
   const handleClose = () => {
@@ -158,8 +192,16 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
             <Text style={styles.headerTitle}>
               {initialData ? 'Edit Receipt' : 'New Receipt'}
             </Text>
-            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-              <Text style={styles.nextButtonText}>Next</Text>
+            <TouchableOpacity 
+              style={[styles.nextButton, isCreatingReceipt && styles.nextButtonDisabled]} 
+              onPress={handleNext}
+              disabled={isCreatingReceipt}
+            >
+              {isCreatingReceipt ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text style={styles.nextButtonText}>Next</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -419,6 +461,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: 'white',
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#999',
+    opacity: 0.6,
   },
   scrollView: {
     flex: 1,

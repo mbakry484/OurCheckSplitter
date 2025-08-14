@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { receiptApi } from '../services/api';
+import { ReceiptResponseDto, PaginatedResponseDto, convertReceiptToHomeFormat } from '../types/api';
 
 interface Receipt {
   id: string;
@@ -29,6 +35,18 @@ interface ReceiptsScreenProps {
 const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
+  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    totalCount: 0,
+  });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   const handleGoBack = () => {
     if (navigation) {
@@ -60,113 +78,138 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
     }
   };
 
-  // All receipts data (same as HomeScreen but complete list)
-  const allReceipts: Receipt[] = [
-    {
-      id: '1',
-      title: 'Dinner at Italian Place',
-      date: 'Oct 30, 2023',
-      totalAmount: 51.00,
-      userPaidAmount: 25.50,
-      type: 'paid',
-      participants: ['John', 'Sarah'],
-    },
-    {
-      id: '2',
-      title: 'Groceries',
-      date: 'Oct 29, 2023',
-      totalAmount: 25.98,
-      userPaidAmount: 12.99,
-      type: 'paid',
-      participants: ['Emma'],
-    },
-    {
-      id: '3',
-      title: 'Coffee with Alex',
-      date: 'Oct 24, 2023',
-      totalAmount: 11.50,
-      userPaidAmount: 5.75,
-      type: 'paid',
-      participants: ['Alex'],
-    },
-    {
-      id: '4',
-      title: 'Movie Night',
-      date: 'Oct 22, 2023',
-      totalAmount: 48.00,
-      userPaidAmount: 16.00,
-      type: 'paid',
-      participants: ['John', 'Sarah', 'Mike'],
-    },
-    {
-      id: '5',
-      title: 'Pizza Lunch',
-      date: 'Oct 20, 2023',
-      totalAmount: 32.75,
-      userPaidAmount: 32.75,
-      type: 'paid',
-      participants: ['John', 'Emma', 'Alex'],
-    },
-    {
-      id: '6',
-      title: 'Gas Station',
-      date: 'Oct 18, 2023',
-      totalAmount: 45.20,
-      userPaidAmount: 22.60,
-      type: 'paid',
-      participants: ['John', 'Sarah'],
-    },
-    {
-      id: '7',
-      title: 'Breakfast at Cafe',
-      date: 'Oct 15, 2023',
-      totalAmount: 28.90,
-      userPaidAmount: 14.45,
-      type: 'paid',
-      participants: ['John', 'Emma'],
-    },
-    {
-      id: '8',
-      title: 'Uber Ride',
-      date: 'Oct 12, 2023',
-      totalAmount: 18.50,
-      userPaidAmount: 9.25,
-      type: 'paid',
-      participants: ['Mike', 'Alex'],
-    },
-    // Additional receipts to show more content
-    {
-      id: '9',
-      title: 'Team Lunch',
-      date: 'Oct 10, 2023',
-      totalAmount: 67.80,
-      userPaidAmount: 22.60,
-      type: 'paid',
-      participants: ['Mike', 'Sarah', 'Lisa'],
-    },
-    {
-      id: '10',
-      title: 'Concert Tickets',
-      date: 'Oct 8, 2023',
-      totalAmount: 120.00,
-      userPaidAmount: 60.00,
-      type: 'paid',
-      participants: ['Kate', 'David'],
-    },
-  ];
+  const PAGE_SIZE = 10;
 
-  // Filter receipts based on search query
-  const filteredReceipts = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return allReceipts;
+  // Load receipts from API with pagination
+  const loadReceipts = async (page: number = 1, isRefresh: boolean = false, searchTerm?: string) => {
+    try {
+      console.log(`Loading receipts - Page: ${page}, SearchTerm: '${searchTerm}', IsRefresh: ${isRefresh}`);
+      
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      setError(null);
+
+      const response = await receiptApi.getReceiptsPaginated({
+        page,
+        pageSize: PAGE_SIZE,
+        searchTerm: searchTerm || undefined,
+      });
+      
+      console.log('Paginated API response:', response);
+      console.log('Response type:', typeof response, 'Is array:', Array.isArray(response));
+      
+      // Check if response is in paginated format or direct array format
+      let convertedReceipts: Receipt[] = [];
+      let paginationInfo = {
+        currentPage: page,
+        totalPages: 1,
+        hasNextPage: false,
+        totalCount: 0,
+      };
+
+      if (response && Array.isArray(response)) {
+        // Direct array format (fallback or old API response)
+        convertedReceipts = response.map(convertReceiptToHomeFormat);
+        paginationInfo.totalCount = response.length;
+      } else if (response && response.items && Array.isArray(response.items)) {
+        // Paginated format
+        convertedReceipts = response.items.map(convertReceiptToHomeFormat);
+        paginationInfo = {
+          currentPage: response.currentPage,
+          totalPages: response.totalPages,
+          hasNextPage: response.hasNextPage,
+          totalCount: response.totalCount,
+        };
+      } else {
+        throw new Error('Invalid API response format');
+      }
+      
+      if (page === 1 || isRefresh) {
+        setReceipts(convertedReceipts);
+      } else {
+        setReceipts(prev => [...prev, ...convertedReceipts]);
+      }
+
+      setPagination(paginationInfo);
+    } catch (error) {
+      console.error('Failed to load receipts:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Fallback: try using the non-paginated API if this is the first page
+      if (page === 1) {
+        try {
+          console.log('Trying fallback to non-paginated API...');
+          const fallbackResponse = await receiptApi.getReceipts();
+          console.log('Fallback API response:', fallbackResponse);
+          
+          if (Array.isArray(fallbackResponse)) {
+            const convertedReceipts = fallbackResponse.map(convertReceiptToHomeFormat);
+            setReceipts(convertedReceipts);
+            setPagination({
+              currentPage: 1,
+              totalPages: 1,
+              hasNextPage: false,
+              totalCount: convertedReceipts.length,
+            });
+            return; // Success with fallback
+          }
+        } catch (fallbackError) {
+          console.error('Fallback API also failed:', fallbackError);
+        }
+      }
+      
+      // If we get here, both APIs failed
+      let errorMessage = 'Failed to load receipts';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setError(errorMessage);
+      if (page === 1) {
+        Alert.alert('Error', errorMessage + '. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+      setIsRefreshing(false);
     }
+  };
+
+  // Load more receipts
+  const loadMoreReceipts = () => {
+    if (pagination.hasNextPage && !loadingMore) {
+      loadReceipts(pagination.currentPage + 1, false, searchQuery);
+    }
+  };
+
+  // Refresh receipts
+  const refreshReceipts = () => {
+    setIsRefreshing(true);
+    loadReceipts(1, true, searchQuery);
+  };
+
+  // Load receipts on component mount
+  useEffect(() => {
+    loadReceipts(1, false);
+    setHasInitiallyLoaded(true);
+  }, []);
+
+  // Handle search with debouncing (skip initial empty search)
+  useEffect(() => {
+    if (!hasInitiallyLoaded) return;
     
-    const query = searchQuery.toLowerCase();
-    return allReceipts.filter(receipt => 
-      receipt.title.toLowerCase().includes(query) ||
-      receipt.participants.some(participant => participant.toLowerCase().includes(query))
-    );
-  }, [searchQuery, allReceipts]);
+    const timeoutId = setTimeout(() => {
+      loadReceipts(1, true, searchQuery);
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, hasInitiallyLoaded]);
+
+  // Since we're doing server-side filtering, we can directly use receipts
+  const displayReceipts = receipts;
 
   const renderReceipt = (receipt: Receipt) => (
     <TouchableOpacity key={receipt.id} style={styles.receiptItem}>
@@ -222,28 +265,105 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
+          returnKeyType="search"
+          autoCapitalize="none"
+          autoCorrect={false}
         />
+        {loading && searchQuery.length > 0 && (
+          <ActivityIndicator size="small" color="#666" style={styles.searchLoadingIndicator} />
+        )}
+        {searchQuery.length > 0 && !loading && (
+          <TouchableOpacity 
+            style={styles.clearSearchButton} 
+            onPress={() => setSearchQuery('')}
+          >
+            <Ionicons name="close-circle" size={20} color="#666" />
+          </TouchableOpacity>
+        )}
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+
+      <View style={styles.content}>
+        {/* Loading State for initial load */}
+        {loading && pagination.currentPage === 1 && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>
+              {searchQuery.length > 0 ? 'Searching receipts...' : 'Loading receipts...'}
+            </Text>
+          </View>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={50} color="#FF3B30" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => loadReceipts(1, true, searchQuery)}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Receipts List */}
-        <View style={styles.receiptsList}>
-          {filteredReceipts.length > 0 ? (
-            filteredReceipts.map(renderReceipt)
-          ) : (
-            <View style={styles.noResultsContainer}>
-              <Text style={styles.noResultsText}>
-                {searchQuery.trim() ? 'No receipts found' : 'No receipts yet'}
-              </Text>
-              {searchQuery.trim() && (
-                <Text style={styles.noResultsSubtext}>
-                  Try searching for a different receipt or participant
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        {!loading && !error && (
+          <FlatList
+            data={displayReceipts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => renderReceipt(item)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.receiptsList}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={refreshReceipts}
+                colors={['#007AFF']}
+                tintColor="#007AFF"
+              />
+            }
+            onEndReached={loadMoreReceipts}
+            onEndReachedThreshold={0.1}
+            ListFooterComponent={() => {
+              if (loadingMore) {
+                return (
+                  <View style={styles.loadingMoreContainer}>
+                    <ActivityIndicator size="small" color="#007AFF" />
+                    <Text style={styles.loadingMoreText}>Loading more...</Text>
+                  </View>
+                );
+              }
+              return null;
+            }}
+            ListEmptyComponent={() => (
+              <View style={styles.noResultsContainer}>
+                {searchQuery.trim() ? (
+                  <>
+                    <Ionicons name="search-outline" size={48} color="#ccc" />
+                    <Text style={styles.noResultsText}>No receipts found</Text>
+                    <Text style={styles.noResultsSubtext}>
+                      Try searching for a different receipt name or friend
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.clearSearchButton} 
+                      onPress={() => setSearchQuery('')}
+                    >
+                      <Text style={styles.clearSearchText}>Clear search</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="receipt-outline" size={48} color="#ccc" />
+                    <Text style={styles.noResultsText}>No receipts yet</Text>
+                    <TouchableOpacity style={styles.addFirstReceiptButton} onPress={handleAddReceipt}>
+                      <Text style={styles.addFirstReceiptText}>Add Your First Receipt</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
+            )}
+          />
+        )}
+      </View>
 
       {/* Bottom Navigation */}
       <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -318,6 +438,18 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
+  },
+  clearSearchButton: {
+    padding: 4,
+  },
+  searchLoadingIndicator: {
+    marginRight: 8,
+  },
+  clearSearchText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '600',
+    marginTop: 12,
   },
   content: {
     flex: 1,
@@ -414,6 +546,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  addFirstReceiptButton: {
+    marginTop: 16,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  addFirstReceiptText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 12,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#FF3B30',
+    marginTop: 12,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingMoreText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
   },
   bottomNav: {
     flexDirection: 'row',

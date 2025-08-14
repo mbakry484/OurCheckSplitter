@@ -62,19 +62,108 @@ namespace OurCheckSplitter.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllReceipts()
+        public async Task<IActionResult> GetAllReceipts(
+            [FromQuery] int? page = null,
+            [FromQuery] int? pageSize = null,
+            [FromQuery] string? searchTerm = null)
         {
             var user = HttpContext.Items["User"] as AppUser;
             if (user == null)
                 return Unauthorized();
 
-            var receipts = await _context.Receipts
+            // Debug logging
+            Console.WriteLine($"Query parameters - Page: {page}, PageSize: {pageSize}, SearchTerm: '{searchTerm}'");
+
+            // Check if pagination parameters are provided
+            bool usePagination = page.HasValue && pageSize.HasValue && page > 0 && pageSize > 0;
+            Console.WriteLine($"Using pagination: {usePagination}");
+
+            // If no pagination parameters, return all receipts (backward compatibility)
+            if (!usePagination)
+            {
+                var allReceipts = await _context.Receipts
+                    .Where(r => r.UserId == user.Id)
+                    .Include(r => r.Friends)
+                    .Include(r => r.Items)
+                    .ThenInclude(i => i.Assignments)
+                    .ThenInclude(a => a.FriendAssignments)
+                    .ThenInclude(fa => fa.Friend)
+                    .ToListAsync();
+
+                var allReceiptDtos = new List<ReceiptResponseDto>();
+
+                foreach (var receipt in allReceipts)
+                {
+                    var receiptDto = new ReceiptResponseDto
+                    {
+                        Id = receipt.Id,
+                        Name = receipt.Name,
+                        Tax = receipt.Tax,
+                        Tips = receipt.Tips,
+                        Total = receipt.Total,
+                        Friends = receipt.Friends?.Select(f => new FriendResponseDto
+                        {
+                            Id = f.Id,
+                            Name = f.Name
+                        }).ToList() ?? new List<FriendResponseDto>(),
+                        Items = receipt.Items.Select(item => new ItemResponseDto
+                        {
+                            Id = item.Id,
+                            Name = item.Name,
+                            Quantity = item.Quantity,
+                            Price = item.Price,
+                            Assignments = item.Assignments
+                                .OrderBy(a => a.Id)
+                                .Select((assignment, index) => new ItemAssignmentResponseDto
+                                {
+                                    Id = assignment.Id,
+                                    Unitlabel = $"unit{index + 1}",
+                                    Price = assignment.Price,
+                                    Quantity = assignment.Quantity,
+                                    AssignedFriends = assignment.FriendAssignments
+                                        .Select(fa => new FriendResponseDto
+                                        {
+                                            Id = fa.Friend.Id,
+                                            Name = fa.Friend.Name
+                                        }).ToList()
+                                }).ToList()
+                        }).ToList()
+                    };
+                    allReceiptDtos.Add(receiptDto);
+                }
+
+                return Ok(allReceiptDtos);
+            }
+
+            // Build query with search filtering
+            var query = _context.Receipts
                 .Where(r => r.UserId == user.Id)
                 .Include(r => r.Friends)
                 .Include(r => r.Items)
                 .ThenInclude(i => i.Assignments)
                 .ThenInclude(a => a.FriendAssignments)
                 .ThenInclude(fa => fa.Friend)
+                .AsQueryable();
+
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchTermLower = searchTerm.ToLower();
+                Console.WriteLine($"Applying search filter for: '{searchTermLower}'");
+                query = query.Where(r => 
+                    (r.Name != null && r.Name.ToLower().Contains(searchTermLower)) ||
+                    r.Friends!.Any(f => f.Name != null && f.Name.ToLower().Contains(searchTermLower)));
+            }
+
+            // Get total count before pagination
+            var totalCount = await query.CountAsync();
+            Console.WriteLine($"Total count after filtering: {totalCount}");
+
+            // Apply ordering and pagination
+            var receipts = await query
+                .OrderByDescending(r => r.Id) // Order by most recent first
+                .Skip((page!.Value - 1) * pageSize!.Value)
+                .Take(pageSize.Value)
                 .ToListAsync();
 
             var receiptDtos = new List<ReceiptResponseDto>();
@@ -88,11 +177,11 @@ namespace OurCheckSplitter.Api.Controllers
                     Tax = receipt.Tax,
                     Tips = receipt.Tips,
                     Total = receipt.Total,
-                    Friends = receipt.Friends.Select(f => new FriendResponseDto
+                    Friends = receipt.Friends?.Select(f => new FriendResponseDto
                     {
                         Id = f.Id,
                         Name = f.Name
-                    }).ToList(),
+                    }).ToList() ?? new List<FriendResponseDto>(),
                     Items = receipt.Items.Select(item => new ItemResponseDto
                     {
                         Id = item.Id,
@@ -119,7 +208,22 @@ namespace OurCheckSplitter.Api.Controllers
                 receiptDtos.Add(receiptDto);
             }
 
-            return Ok(receiptDtos);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize!.Value);
+
+            var paginatedResponse = new PaginatedResponseDto<ReceiptResponseDto>
+            {
+                Items = receiptDtos,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                CurrentPage = page!.Value,
+                PageSize = pageSize.Value,
+                HasNextPage = page.Value < totalPages,
+                HasPreviousPage = page.Value > 1
+            };
+
+            Console.WriteLine($"Returning {receiptDtos.Count} receipts, page {page.Value} of {totalPages}");
+
+            return Ok(paginatedResponse);
         }
         [HttpGet("{id}")]
         public async Task<IActionResult> GetReceiptById(int id)

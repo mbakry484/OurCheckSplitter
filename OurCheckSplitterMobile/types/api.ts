@@ -59,6 +59,23 @@ export interface ReceiptDto {
   tipsIncludedInTotal?: boolean;
 }
 
+// Pagination DTOs
+export interface PaginationRequestDto {
+  page: number;
+  pageSize: number;
+  searchTerm?: string;
+}
+
+export interface PaginatedResponseDto<T> {
+  items: T[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
 // For HomeScreen compatibility
 export interface HomeScreenReceipt {
   id: string;
@@ -80,16 +97,23 @@ export interface HomeScreenFriend {
 
 // Utility function to convert API response to HomeScreen format
 export const convertReceiptToHomeFormat = (apiReceipt: ReceiptResponseDto): HomeScreenReceipt => {
+  // Calculate user's paid amount based on assignments
+  // For now, we'll use a simple approximation - if there are items and assignments, 
+  // calculate based on assignments, otherwise assume user paid the full amount
+  let userPaidAmount = apiReceipt.total;
+  
+  if (apiReceipt.items && apiReceipt.items.length > 0) {
+    // Sum up all assignments that don't include the current user (we don't have user context here)
+    // For simplicity, we'll show the total for now
+    userPaidAmount = apiReceipt.total;
+  }
+  
   return {
     id: apiReceipt.id.toString(),
-    title: apiReceipt.name,
-    date: new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
-    }),
+    title: apiReceipt.name || 'Unnamed Receipt',
+    date: 'Recently added', // Since there's no date field in the API
     totalAmount: apiReceipt.total,
-    userPaidAmount: apiReceipt.total, // Will need to calculate actual user amount later
+    userPaidAmount: userPaidAmount,
     type: 'paid',
     participants: apiReceipt.friends.map(f => f.name),
   };

@@ -81,9 +81,26 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
 // Receipt API calls
 export const receiptApi = {
-  // Get all receipts
+  // Get all receipts (legacy method for backward compatibility)
   getReceipts: async () => {
     return apiCall('/Receipt');
+  },
+  
+  // Get receipts with pagination
+  getReceiptsPaginated: async (paginationParams: { page: number; pageSize: number; searchTerm?: string }) => {
+    const queryParams = new URLSearchParams({
+      page: paginationParams.page.toString(),
+      pageSize: paginationParams.pageSize.toString(),
+    });
+    
+    if (paginationParams.searchTerm && paginationParams.searchTerm.trim()) {
+      queryParams.append('searchTerm', paginationParams.searchTerm.trim());
+    }
+    
+    const url = `/Receipt?${queryParams.toString()}`;
+    console.log('Receipts API call URL:', url);
+    
+    return apiCall(url);
   },
   
   // Get receipt by ID
@@ -109,9 +126,26 @@ export const receiptApi = {
 
 // Friends API calls
 export const friendsApi = {
-  // Get all friends
+  // Get all friends (legacy method for backward compatibility)
   getFriends: async () => {
     return apiCall('/Friends');
+  },
+  
+  // Get friends with pagination
+  getFriendsPaginated: async (paginationParams: { page: number; pageSize: number; searchTerm?: string }) => {
+    const queryParams = new URLSearchParams({
+      page: paginationParams.page.toString(),
+      pageSize: paginationParams.pageSize.toString(),
+    });
+    
+    if (paginationParams.searchTerm && paginationParams.searchTerm.trim()) {
+      queryParams.append('searchTerm', paginationParams.searchTerm.trim());
+    }
+    
+    const url = `/Friends?${queryParams.toString()}`;
+    console.log('Friends API call URL:', url);
+    
+    return apiCall(url);
   },
   
   // Get friend by ID
