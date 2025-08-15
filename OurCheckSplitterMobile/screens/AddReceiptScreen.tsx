@@ -12,10 +12,14 @@ import {
   Alert,
   Switch,
   Modal,
+  Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { api } from '../services/api';
+import { FriendDto } from '../types/api';
 
 interface AddReceiptScreenProps {
   navigation?: any;
@@ -107,21 +111,29 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     isEditing ? editingData?.totalAmount || 0 : (basicData?.finalTotal ? parseFloat(basicData.finalTotal) : 0)
   );
   
-  // Friends selection with search
-  const [friends] = useState<Friend[]>([
-    { id: '1', name: 'John', avatar: '👨‍💻', selected: false },
-    { id: '2', name: 'Sarah', avatar: '👩‍🎨', selected: false },
-    { id: '3', name: 'Mike', avatar: '👨‍💼', selected: false },
-    { id: '4', name: 'Emma', avatar: '👩‍🦰', selected: false },
-    { id: '5', name: 'Alex', avatar: '👨‍🎓', selected: false },
-  ]);
+  // Friends selection with search and pagination
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [selectedFriends, setSelectedFriends] = useState<Friend[]>(
     isEditing ? editingData?.selectedFriends || [] : []
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [newFriendName, setNewFriendName] = useState('');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMoreFriends, setHasMoreFriends] = useState(false);
+  const [totalFriends, setTotalFriends] = useState(0);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
+  const FRIENDS_PER_PAGE = 5;
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  
+  // Friends section collapse state - start collapsed by default
+  const [isFriendsSectionExpanded, setIsFriendsSectionExpanded] = useState(false);
+  const friendsSectionHeight = useState(new Animated.Value(0))[0]; // 1 for expanded, 0 for collapsed
+  
+  // Loading state for save operation
+  const [isSaving, setIsSaving] = useState(false);
 
   // Update state when editing data changes
   useEffect(() => {
@@ -157,6 +169,79 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
       onEditBasicData(currentData);
     }
   };
+
+  // Generate avatar for friend
+  const generateAvatar = (name: string): string => {
+    const firstLetter = name.charAt(0).toUpperCase();
+    const avatarMap: { [key: string]: string } = {
+      'A': '👨‍💻', 'B': '👩‍🎨', 'C': '👨‍💼', 'D': '👩‍🦰', 'E': '👨‍🎓',
+      'F': '👩‍⚕️', 'G': '👨‍🌾', 'H': '👩‍💼', 'I': '👨‍🎤', 'J': '👩‍🔧',
+      'K': '👨‍⚕️', 'L': '👩‍🎓', 'M': '👨‍🏫', 'N': '👩‍🏫', 'O': '👨‍🚀',
+      'P': '👩‍🚀', 'Q': '👨‍🎭', 'R': '👩‍🎭', 'S': '👨‍💻', 'T': '👩‍💻',
+      'U': '👨‍🔬', 'V': '👩‍🔬', 'W': '👨‍🍳', 'X': '👩‍🍳', 'Y': '👨‍🎨', 'Z': '👩‍🎤'
+    };
+    return avatarMap[firstLetter] || '👤';
+  };
+
+  // Load friends from API with pagination
+  const loadFriends = async (page: number = 1, searchTerm: string = '', append: boolean = false) => {
+    try {
+      setIsLoadingFriends(true);
+      
+      const response = await api.friends.getFriendsPaginated({
+        page,
+        pageSize: FRIENDS_PER_PAGE,
+        searchTerm: searchTerm.trim()
+      });
+
+      const friendsData: Friend[] = response.items.map((apiFriend: FriendDto) => ({
+        id: apiFriend.id.toString(),
+        name: apiFriend.name,
+        avatar: generateAvatar(apiFriend.name),
+        selected: false
+      }));
+
+      if (append && page > 1) {
+        setFriends(prevFriends => [...prevFriends, ...friendsData]);
+      } else {
+        setFriends(friendsData);
+        setCurrentPage(1);
+      }
+      
+      setHasMoreFriends(response.hasNextPage);
+      setTotalFriends(response.totalCount);
+      
+      if (page > 1) {
+        setCurrentPage(page);
+      }
+    } catch (error) {
+      console.error('Failed to load friends:', error);
+      Alert.alert('Error', 'Failed to load friends. Please try again.');
+    } finally {
+      setIsLoadingFriends(false);
+    }
+  };
+
+  // Load more friends (pagination)
+  const loadMoreFriends = () => {
+    if (hasMoreFriends && !isLoadingFriends) {
+      loadFriends(currentPage + 1, searchQuery, true);
+    }
+  };
+
+  // Load friends on component mount
+  useEffect(() => {
+    loadFriends();
+  }, []);
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      loadFriends(1, searchQuery, false);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const handleAddItem = () => {
     const newItem: ReceiptItem = {
@@ -334,28 +419,57 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     }
   };
 
-  const filteredFriends = friends.filter(friend =>
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Since we're using API-based search, friends are already filtered
+  const filteredFriends = friends;
 
-  const handleAddNewFriend = () => {
+  const handleAddNewFriend = async () => {
     if (newFriendName.trim()) {
-      const newFriend: Friend = {
-        id: Date.now().toString(),
-        name: newFriendName.trim(),
-        avatar: '👤',
-        selected: true,
-      };
-      // Add to friends list and select by default
-      friends.push(newFriend);
-      setSelectedFriends([...selectedFriends, newFriend]);
-      setNewFriendName('');
-      setShowAddFriendModal(false);
+      try {
+        // Create friend via API
+        const createdFriend = await api.friends.createFriend(newFriendName.trim());
+        
+        const newFriend: Friend = {
+          id: createdFriend.id.toString(),
+          name: createdFriend.name,
+          avatar: generateAvatar(createdFriend.name),
+          selected: true,
+        };
+        
+        // Check if friend already exists in the list (prevent duplicates)
+        const existingFriend = friends.find(f => f.id === newFriend.id);
+        if (!existingFriend) {
+          setFriends([newFriend, ...friends]);
+        }
+        
+        // Check if friend is already selected
+        const alreadySelected = selectedFriends.find(f => f.id === newFriend.id);
+        if (!alreadySelected) {
+          setSelectedFriends([...selectedFriends, newFriend]);
+        }
+        setNewFriendName('');
+        setShowAddFriendModal(false);
+        setTotalFriends(prev => prev + 1);
+      } catch (error) {
+        console.error('Failed to create friend:', error);
+        Alert.alert('Error', 'Failed to add friend. Please try again.');
+      }
     }
   };
 
   const handleSearchFriend = (query: string) => {
     setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const toggleFriendsSection = () => {
+    const newExpanded = !isFriendsSectionExpanded;
+    setIsFriendsSectionExpanded(newExpanded);
+    
+    Animated.timing(friendsSectionHeight, {
+      toValue: newExpanded ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handleSelectAll = () => {
@@ -384,7 +498,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     return subtotal + tipAmount + taxAmount;
   };
 
-  const handleSaveReceipt = () => {
+  const handleSaveReceipt = async () => {
     if (!receiptTitle.trim()) {
       Alert.alert('Missing Information', 'Please enter a receipt title.');
       return;
@@ -397,6 +511,20 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
 
     if (selectedFriends.length === 0) {
       Alert.alert('Missing Information', 'Please select at least one friend to split with.');
+      return;
+    }
+
+    // Validate that all items have friends assigned
+    const itemsWithoutAssignedFriends = items.filter(item => 
+      item.name.trim() && item.price.trim() && item.assignedFriends.length === 0
+    );
+    
+    if (itemsWithoutAssignedFriends.length > 0) {
+      const itemNames = itemsWithoutAssignedFriends.map(item => item.name).join(', ');
+      Alert.alert(
+        'Missing Assignments', 
+        `The following items don't have friends assigned: ${itemNames}. Please assign friends to all items.`
+      );
       return;
     }
 
@@ -414,21 +542,124 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
       }
     }
 
-    // Prepare receipt data for the results screen
-    const receiptData = {
-      receiptTitle,
-      receiptDate,
-      items,
-      friends,
-      selectedFriends,
-      tip: parseFloat(tip) || 0,
-      tax: parseFloat(tax) || 0,
-      totalAmount: calculateTotal()
-    };
-    
-    // Navigate to the bill split results screen
-            if (navigation) {
-      navigation.navigate('BillSplitResult', { receiptData });
+    // Get receiptId from route params
+    const receiptId = route?.params?.receiptId;
+    if (!receiptId) {
+      Alert.alert('Error', 'Receipt ID not found. Please try again.');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      console.log('Starting to save receipt with items and assignments...');
+
+      // Step 1: Add all items to the receipt
+      const createdItems = [];
+      for (const item of items) {
+        if (item.name.trim() && item.price.trim()) {
+          try {
+            const createdItem = await api.receipts.addItemToReceipt(receiptId, {
+              name: item.name,
+              price: parseFloat(item.price),
+              quantity: parseInt(item.quantity) || 1,
+            });
+            createdItems.push({ ...item, apiItemId: createdItem.id });
+            console.log(`Added item: ${item.name}`);
+          } catch (itemError) {
+            console.error(`Failed to add item ${item.name}:`, itemError);
+            Alert.alert('Error', `Failed to add item "${item.name}". Please try again.`);
+            return;
+          }
+        }
+      }
+
+      // Step 2: Assign friends to items based on their assignment type
+      for (const item of createdItems) {
+        const assignedFriendsNames = item.assignedFriends
+          .map(friendId => friends.find(f => f.id === friendId)?.name)
+          .filter(Boolean);
+
+        if (assignedFriendsNames.length > 0) {
+          try {
+            console.log(`Assigning friends to item: ${item.name}, Split Equally: ${item.splitEqually}, Quantity: ${item.quantity}, Friends: ${assignedFriendsNames.join(', ')}`);
+            
+            if (item.splitEqually) {
+              // Use assign-friends-to-whole-item API
+              await api.receipts.assignFriendsToWholeItem({
+                receiptId: receiptId,
+                itemId: item.apiItemId,
+                friendNames: assignedFriendsNames,
+              });
+              console.log(`Successfully assigned friends to whole item: ${item.name}`);
+            } else {
+              // Use assign-friends-to-items API for sub-items
+              const itemAssignments = [{
+                itemId: item.apiItemId,
+                friendNames: assignedFriendsNames,
+              }];
+              
+              console.log(`Assignment data for sub-items:`, { receiptId, itemAssignments });
+              
+              await api.receipts.assignFriendsToItems({
+                receiptId: receiptId,
+                itemAssignments: itemAssignments,
+              });
+              console.log(`Successfully assigned friends to sub-items of: ${item.name}`);
+            }
+          } catch (assignmentError: any) {
+            console.error(`Failed to assign friends to item ${item.name}:`, assignmentError);
+            let errorMessage = `Item "${item.name}" was added but friend assignments failed.`;
+            
+            // Try to extract more specific error information
+            if (assignmentError?.message?.includes('status: 400')) {
+              errorMessage += ' The item may not have enough quantity for the number of friends assigned.';
+            } else if (assignmentError?.message?.includes('Maximum assignments allowed')) {
+              errorMessage += ' Check the item quantity and try again.';
+            }
+            
+            Alert.alert('Assignment Error', errorMessage + ' You can edit assignments later.');
+          }
+        }
+      }
+
+      // Success! Navigate to results screen
+      Alert.alert(
+        'Success!', 
+        'Receipt saved successfully with all items and friend assignments.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Prepare receipt data for the results screen
+              const receiptData = {
+                receiptTitle,
+                receiptDate,
+                items: createdItems,
+                friends,
+                selectedFriends,
+                tip: parseFloat(tip) || 0,
+                tax: parseFloat(tax) || 0,
+                totalAmount: calculateTotal()
+              };
+              
+              // Navigate to the bill split results screen
+              if (navigation) {
+                navigation.navigate('BillSplitResult', { receiptData });
+              }
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('Failed to save receipt:', error);
+      Alert.alert(
+        'Error',
+        'Failed to save receipt. Please check your connection and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -671,24 +902,6 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
     );
   };
 
-  const renderFriend = (friend: Friend) => {
-    const isSelected = selectedFriends.some(f => f.id === friend.id);
-    return (
-      <TouchableOpacity
-        key={friend.id}
-        style={[styles.friendChip, isSelected && styles.selectedFriendChip]}
-        onPress={() => toggleFriendSelection(friend.id)}
-      >
-        <Text style={styles.friendAvatar}>{friend.avatar}</Text>
-        <Text style={[styles.friendName, isSelected && styles.selectedFriendName]}>
-          {friend.name}
-        </Text>
-        {isSelected && (
-          <Ionicons name="checkmark-circle" size={16} color="#4ECDC4" />
-        )}
-      </TouchableOpacity>
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -758,7 +971,12 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
            {/* Friends Section */}
            <View style={styles.section}>
              <View style={styles.sectionHeader}>
-               <Text style={styles.sectionTitle}>Friends</Text>
+               <View style={styles.sectionTitleContainer}>
+                 <Text style={styles.sectionTitle}>Friends</Text>
+                 {selectedFriends.length > 0 && (
+                   <Text style={styles.selectedCount}>({selectedFriends.length} selected)</Text>
+                 )}
+               </View>
                <TouchableOpacity 
                  style={styles.addFriendButton} 
                  onPress={() => setShowAddFriendModal(true)}
@@ -768,54 +986,124 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                </TouchableOpacity>
              </View>
              
-             <View style={styles.sectionContent}>
-               {/* Search Bar */}
-               <View style={styles.searchContainer}>
-                 <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-                 <TextInput
-                   style={styles.searchInput}
-                   placeholder="Search friends..."
-                   placeholderTextColor="#999"
-                   value={searchQuery}
-                   onChangeText={handleSearchFriend}
-                 />
-                 {searchQuery.length > 0 && (
-                   <TouchableOpacity onPress={() => setSearchQuery('')}>
-                     <Ionicons name="close-circle" size={20} color="#999" />
-                   </TouchableOpacity>
-                 )}
-               </View>
+             <Animated.View 
+               style={[
+                 styles.sectionContent,
+                 {
+                   maxHeight: friendsSectionHeight.interpolate({
+                     inputRange: [0, 1],
+                     outputRange: [0, 1000], // Max height when expanded
+                   }),
+                   opacity: friendsSectionHeight.interpolate({
+                     inputRange: [0, 0.5, 1],
+                     outputRange: [0, 0.5, 1],
+                   }),
+                 }
+               ]}
+             >
+               {isFriendsSectionExpanded && (
+                 <>
+                   {/* Search Bar */}
+                   <View style={styles.searchContainer}>
+                     <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                     <TextInput
+                       style={styles.searchInput}
+                       placeholder="Search friends..."
+                       placeholderTextColor="#999"
+                       value={searchQuery}
+                       onChangeText={handleSearchFriend}
+                     />
+                     {searchQuery.length > 0 && (
+                       <TouchableOpacity onPress={() => setSearchQuery('')}>
+                         <Ionicons name="close-circle" size={20} color="#999" />
+                       </TouchableOpacity>
+                     )}
+                   </View>
 
-               {/* Select All Checkbox */}
-               {filteredFriends.length > 0 && (
-                 <View style={styles.selectAllContainer}>
-                   <TouchableOpacity 
-                     style={styles.selectAllButton} 
-                     onPress={handleSelectAll}
-                   >
-                     <View style={[styles.checkbox, isAllSelected && styles.checkboxSelected]}>
-                       {isAllSelected && (
-                         <Ionicons name="checkmark" size={16} color="white" />
-                       )}
+                   {/* Select All Checkbox */}
+                   {filteredFriends.length > 0 && (
+                     <View style={styles.selectAllContainer}>
+                       <TouchableOpacity 
+                         style={styles.selectAllButton} 
+                         onPress={handleSelectAll}
+                       >
+                         <View style={[styles.checkbox, isAllSelected && styles.checkboxSelected]}>
+                           {isAllSelected && (
+                             <Ionicons name="checkmark" size={16} color="white" />
+                           )}
+                         </View>
+                         <Text style={styles.selectAllText}>
+                           {isAllSelected ? 'Deselect All' : 'Select All'}
+                         </Text>
+                       </TouchableOpacity>
                      </View>
-                     <Text style={styles.selectAllText}>
-                       {isAllSelected ? 'Deselect All' : 'Select All'}
-                     </Text>
-                   </TouchableOpacity>
-                 </View>
-               )}
+                   )}
 
-               {/* Friends List */}
-               <View style={styles.friendsContainer}>
-                 {filteredFriends.map(renderFriend)}
-               </View>
-               
-               {selectedFriends.length > 0 && (
-                 <Text style={styles.selectionSummary}>
-                   Selected: {selectedFriends.map(f => f.name).join(', ')}
-                 </Text>
+                   {/* Friends List */}
+                   <View style={styles.friendsContainer}>
+                     {filteredFriends.map((friend, index) => (
+                       <TouchableOpacity
+                         key={`friend-${friend.id}-${index}`}
+                         style={[styles.friendChip, selectedFriends.some(f => f.id === friend.id) && styles.selectedFriendChip]}
+                         onPress={() => toggleFriendSelection(friend.id)}
+                       >
+                         <Text style={styles.friendAvatar}>{friend.avatar}</Text>
+                         <Text style={[styles.friendName, selectedFriends.some(f => f.id === friend.id) && styles.selectedFriendName]}>
+                           {friend.name}
+                         </Text>
+                       </TouchableOpacity>
+                     ))}
+                   </View>
+
+                   {selectedFriends.length > 0 && (
+                     <Text style={styles.selectionSummary}>
+                       Selected: {selectedFriends.map(f => f.name).join(', ')}
+                     </Text>
+                   )}
+                 </>
                )}
-             </View>
+             </Animated.View>
+             
+             {/* View More / Collapse Button - Always visible */}
+             <TouchableOpacity 
+               style={styles.viewMoreButton}
+               onPress={() => {
+                 if (!isFriendsSectionExpanded) {
+                   // If collapsed, expand the section
+                   toggleFriendsSection();
+                 } else if (hasMoreFriends) {
+                   // If expanded and has more friends, load more
+                   loadMoreFriends();
+                 } else {
+                   // If expanded and no more friends, collapse
+                   toggleFriendsSection();
+                 }
+               }}
+               disabled={isLoadingFriends}
+             >
+               <Text style={styles.viewMoreText}>
+                 {!isFriendsSectionExpanded 
+                   ? `Show Friends (${totalFriends} total)`
+                   : isLoadingFriends 
+                     ? 'Loading...' 
+                     : hasMoreFriends 
+                       ? `View More (${totalFriends - friends.length} remaining)`
+                       : 'Hide Friends'
+                 }
+               </Text>
+               {!isLoadingFriends && (
+                 <Ionicons 
+                   name={!isFriendsSectionExpanded 
+                     ? "chevron-down" 
+                     : hasMoreFriends 
+                       ? "chevron-down" 
+                       : "chevron-up"
+                   } 
+                   size={16} 
+                   color="#007AFF" 
+                 />
+               )}
+             </TouchableOpacity>
            </View>
 
            {/* Items */}
@@ -898,17 +1186,24 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
              <TouchableOpacity 
                style={[
                  styles.saveButton,
-                 expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && styles.saveButtonWarning
+                 expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && styles.saveButtonWarning,
+                 isSaving && styles.saveButtonDisabled
                ]} 
                onPress={handleSaveReceipt}
+               disabled={isSaving}
              >
+               {isSaving && (
+                 <ActivityIndicator size="small" color="white" style={styles.saveButtonIcon} />
+               )}
                <Text style={styles.saveButtonText}>
-                 {expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 
-                   ? 'Review & Save' 
-                   : 'Save Receipt'
+                 {isSaving 
+                   ? 'Saving...'
+                   : expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 
+                     ? 'Review & Save' 
+                     : 'Save Receipt'
                  }
                </Text>
-               {expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && (
+               {!isSaving && expectedTotal > 0 && Math.abs(calculateTotal() - expectedTotal) > 0.01 && (
                  <Ionicons name="warning" size={20} color="white" style={styles.saveButtonIcon} />
                )}
              </TouchableOpacity>
@@ -1014,16 +1309,29 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  selectedCount: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 0,
+    marginRight: 8,
   },
   sectionContent: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
+    overflow: 'hidden',
   },
   inputGroup: {
     marginBottom: 16,
@@ -1173,6 +1481,24 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    marginBottom: 12,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    color: '#007AFF',
+    fontWeight: '500',
+    marginRight: 4,
   },
   friendChip: {
     flexDirection: 'row',
@@ -1324,6 +1650,10 @@ const styles = StyleSheet.create({
      shadowOpacity: 0.2,
      shadowRadius: 4,
      elevation: 3,
+   },
+   saveButtonDisabled: {
+     backgroundColor: '#999',
+     opacity: 0.6,
    },
    saveButtonWarning: {
      backgroundColor: '#FF9500',

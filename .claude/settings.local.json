@@ -15,7 +15,12 @@
       "Bash(npx expo start:*)",
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef database:*)",
+      "Bash(sqlite3:*)",
+      "Bash(tasklist:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

@@ -92,6 +92,24 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
       return;
     }
 
+    // Validate tax percentage doesn't exceed reasonable limits
+    if (tax.trim() && taxType === '%') {
+      const taxPercent = parseFloat(tax.trim());
+      if (taxPercent < 0 || taxPercent > 100) {
+        Alert.alert('Invalid Tax', 'Tax percentage should be between 0% and 100%.');
+        return;
+      }
+    }
+
+    // Validate tip amount is reasonable
+    if (tips.trim()) {
+      const tipsNum = parseFloat(tips.trim());
+      if (isNaN(tipsNum) || tipsNum < 0) {
+        Alert.alert('Invalid Tips', 'Please enter a valid tips amount.');
+        return;
+      }
+    }
+
     // Prepare data for API
     const basicData: BasicReceiptData = {
       receiptName: receiptName.trim(),
@@ -108,15 +126,17 @@ const AddReceiptOverlay = ({ visible, onClose, onNext, initialData }: AddReceipt
 
       // Convert form data to API format
       const receiptDto = {
-        name: receiptName.trim(),
-        tax: tax.trim() ? parseFloat(tax.trim()) : 0,
-        taxType: taxType === '%' ? 'percentage' : 'amount',
-        tips: tips.trim() ? parseFloat(tips.trim()) : 0,
-        total: finalTotalNum,
-        tipsIncludedInTotal: tipsIncluded,
+        Name: receiptName.trim(),
+        Tax: tax.trim() ? parseFloat(tax.trim()) : 0,
+        TaxType: taxType === '%' ? 'percentage' : 'amount',
+        Tips: tips.trim() ? parseFloat(tips.trim()) : 0,
+        Total: finalTotalNum,
+        TipsIncludedInTotal: tipsIncluded,
       };
 
       console.log('Creating receipt with data:', receiptDto);
+      console.log('Tax Type conversion: Input =', taxType, ', Output =', receiptDto.TaxType);
+      console.log('Tips Included: Input =', tipsIncluded, ', Output =', receiptDto.TipsIncludedInTotal);
 
       // Create receipt via API
       const response = await receiptApi.createReceipt(receiptDto);

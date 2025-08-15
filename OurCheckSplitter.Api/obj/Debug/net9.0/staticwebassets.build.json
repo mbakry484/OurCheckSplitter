@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "kdO6rcxpC0w7lWhASyKl6UdAIg2XWZhj85ab0kI8AOg=",
+  "Hash": "LDe+lvE487nLo0htKBqkuk8/YJqifXjMmD6mxsWvezA=",
   "Source": "OurCheckSplitter.Api",
   "BasePath": "_content/OurCheckSplitter.Api",
   "Mode": "Default",
@@ -10,7 +10,7 @@
     {
       "Name": "OurCheckSplitter.Api\\wwwroot",
       "Source": "OurCheckSplitter.Api",
-      "ContentRoot": "C:\\Users\\DELL\\source\\repos\\OurCheckSplitter\\ourchecksplitter.api\\wwwroot\\",
+      "ContentRoot": "C:\\Users\\DELL\\source\\repos\\OurCheckSplitter\\OurCheckSplitter.Api\\wwwroot\\",
       "BasePath": "_content/OurCheckSplitter.Api",
       "Pattern": "**"
     }

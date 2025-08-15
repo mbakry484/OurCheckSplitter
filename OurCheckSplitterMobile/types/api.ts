@@ -29,6 +29,7 @@ export interface ReceiptResponseDto {
   tips: number;
   total: number;
   tipsIncludedInTotal?: boolean;
+  createdDate: string;
   friends: FriendResponseDto[];
   items: ItemResponseDto[];
 }
@@ -108,10 +109,32 @@ export const convertReceiptToHomeFormat = (apiReceipt: ReceiptResponseDto): Home
     userPaidAmount = apiReceipt.total;
   }
   
+  // Format the date to be user-friendly
+  const formatDate = (dateString: string): string => {
+    try {
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        return 'Today';
+      } else if (diffDays === 2) {
+        return 'Yesterday';
+      } else if (diffDays <= 7) {
+        return `${diffDays - 1} days ago`;
+      } else {
+        return date.toLocaleDateString();
+      }
+    } catch (error) {
+      return 'Recently added';
+    }
+  };
+  
   return {
     id: apiReceipt.id.toString(),
     title: apiReceipt.name || 'Unnamed Receipt',
-    date: 'Recently added', // Since there's no date field in the API
+    date: formatDate(apiReceipt.createdDate),
     totalAmount: apiReceipt.total,
     userPaidAmount: userPaidAmount,
     type: 'paid',

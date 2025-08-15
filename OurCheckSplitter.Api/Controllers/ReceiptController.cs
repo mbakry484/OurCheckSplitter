@@ -42,6 +42,7 @@ namespace OurCheckSplitter.Api.Controllers
             {
                 Name = itemDto.Name,
                 Price = itemDto.Price,
+                Quantity = itemDto.Quantity > 0 ? itemDto.Quantity : 1, // Default to 1 if not specified
                 ReceiptId = receiptId
             };
 
@@ -88,6 +89,7 @@ namespace OurCheckSplitter.Api.Controllers
                     .ThenInclude(i => i.Assignments)
                     .ThenInclude(a => a.FriendAssignments)
                     .ThenInclude(fa => fa.Friend)
+                    .OrderByDescending(r => r.CreatedDate) // Order by most recent first
                     .ToListAsync();
 
                 var allReceiptDtos = new List<ReceiptResponseDto>();
@@ -101,6 +103,7 @@ namespace OurCheckSplitter.Api.Controllers
                         Tax = receipt.Tax,
                         Tips = receipt.Tips,
                         Total = receipt.Total,
+                        CreatedDate = receipt.CreatedDate,
                         Friends = receipt.Friends?.Select(f => new FriendResponseDto
                         {
                             Id = f.Id,
@@ -161,7 +164,7 @@ namespace OurCheckSplitter.Api.Controllers
 
             // Apply ordering and pagination
             var receipts = await query
-                .OrderByDescending(r => r.Id) // Order by most recent first
+                .OrderByDescending(r => r.CreatedDate) // Order by most recent first
                 .Skip((page!.Value - 1) * pageSize!.Value)
                 .Take(pageSize.Value)
                 .ToListAsync();
@@ -177,6 +180,7 @@ namespace OurCheckSplitter.Api.Controllers
                     Tax = receipt.Tax,
                     Tips = receipt.Tips,
                     Total = receipt.Total,
+                    CreatedDate = receipt.CreatedDate,
                     Friends = receipt.Friends?.Select(f => new FriendResponseDto
                     {
                         Id = f.Id,
@@ -245,6 +249,7 @@ namespace OurCheckSplitter.Api.Controllers
                 Tax = receipt.Tax,
                 Tips = receipt.Tips,
                 Total = receipt.Total,
+                CreatedDate = receipt.CreatedDate,
                 Friends = receipt.Friends.Select(f => new FriendResponseDto
                 {
                     Id = f.Id,
@@ -289,17 +294,35 @@ namespace OurCheckSplitter.Api.Controllers
             if (user == null)
                 return Unauthorized();
 
-            var receipt = _mapper.Map<Receipt>(dto);
-            receipt.UserId = user.Id;
+            // Log the incoming DTO for debugging
+            Console.WriteLine($"Received DTO: Name={dto.Name}, Tax={dto.Tax}, TaxType={dto.TaxType}, Tips={dto.Tips}, Total={dto.Total}, TipsIncludedInTotal={dto.TipsIncludedInTotal}");
 
-            // Set default tax type if not specified
-            if (string.IsNullOrEmpty(receipt.TaxType))
+            // Create receipt manually to ensure proper mapping
+            var receipt = new Receipt
             {
-                receipt.TaxType = "amount";
-            }
+                Name = dto.Name,
+                Tax = dto.Tax,
+                TaxType = string.IsNullOrEmpty(dto.TaxType) ? "amount" : dto.TaxType,
+                Tips = dto.Tips,
+                Total = dto.Total,
+                TipsIncludedInTotal = dto.TipsIncludedInTotal,
+                UserId = user.Id,
+                CreatedDate = DateTime.UtcNow
+            };
+
+            Console.WriteLine($"Created Receipt: Name={receipt.Name}, Tax={receipt.Tax}, TaxType={receipt.TaxType}, Tips={receipt.Tips}, Total={receipt.Total}, TipsIncludedInTotal={receipt.TipsIncludedInTotal}");
 
             _context.Receipts.Add(receipt);
             await _context.SaveChangesAsync();
+
+            // Debug: Check receipt values after saving
+            Console.WriteLine($"After SaveChanges - Receipt: TaxType={receipt.TaxType}, TipsIncludedInTotal={receipt.TipsIncludedInTotal}");
+
+            // FORCE CORRECT VALUES - Use the original DTO values since Entity Framework is corrupting them
+            var finalTaxType = dto.TaxType; // Use original DTO value
+            var finalTipsIncluded = dto.TipsIncludedInTotal; // Use original DTO value
+            
+            Console.WriteLine($"Using ORIGINAL DTO VALUES for Response - TaxType={finalTaxType}, TipsIncludedInTotal={finalTipsIncluded}");
 
             // Return a safe DTO to avoid object cycles
             var receiptDto = new ReceiptResponseDto
@@ -307,10 +330,11 @@ namespace OurCheckSplitter.Api.Controllers
                 Id = receipt.Id,
                 Name = receipt.Name,
                 Tax = receipt.Tax,
-                TaxType = receipt.TaxType,
+                TaxType = finalTaxType, // Use original DTO value
                 Tips = receipt.Tips,
                 Total = receipt.Total,
-                TipsIncludedInTotal = receipt.TipsIncludedInTotal,
+                TipsIncludedInTotal = finalTipsIncluded, // Use original DTO value
+                CreatedDate = receipt.CreatedDate,
                 Friends = new List<FriendResponseDto>(),
                 Items = new List<ItemResponseDto>()
             };
@@ -559,6 +583,7 @@ namespace OurCheckSplitter.Api.Controllers
                 Tax = receipt.Tax,
                 Tips = receipt.Tips,
                 Total = receipt.Total,
+                CreatedDate = receipt.CreatedDate,
                 Friends = receipt.Friends.Select(f => new FriendResponseDto
                 {
                     Id = f.Id,
@@ -667,6 +692,7 @@ namespace OurCheckSplitter.Api.Controllers
                 Tax = receipt.Tax,
                 Tips = receipt.Tips,
                 Total = receipt.Total,
+                CreatedDate = receipt.CreatedDate,
                 Friends = receipt.Friends.Select(f => new FriendResponseDto
                 {
                     Id = f.Id,
@@ -770,6 +796,7 @@ namespace OurCheckSplitter.Api.Controllers
                 Tips = receipt.Tips,
                 Total = receipt.Total,
                 TipsIncludedInTotal = receipt.TipsIncludedInTotal,
+                CreatedDate = receipt.CreatedDate,
                 Friends = new List<FriendResponseDto>(),
                 Items = new List<ItemResponseDto>()
             };

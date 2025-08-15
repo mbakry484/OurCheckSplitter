@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using OurCheckSplitter.Api.Data;
 
@@ -10,9 +11,11 @@ using OurCheckSplitter.Api.Data;
 namespace OurCheckSplitter.Api.Migrations
 {
     [DbContext(typeof(OurCheckSplitterContext))]
-    partial class OurCheckSplitterContextModelSnapshot : ModelSnapshot
+    [Migration("20250815173110_AddCreatedDateToReceipt")]
+    partial class AddCreatedDateToReceipt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");

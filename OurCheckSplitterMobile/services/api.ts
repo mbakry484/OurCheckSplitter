@@ -122,6 +122,51 @@ export const receiptApi = {
       method: 'DELETE',
     });
   },
+  
+  // Add item to receipt
+  addItemToReceipt: async (receiptId: number, itemData: { name: string; price: number; quantity?: number }) => {
+    return apiCall(`/Receipt/${receiptId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({
+        Name: itemData.name,
+        Price: itemData.price,
+        Quantity: itemData.quantity || 1,
+      }),
+    });
+  },
+  
+  // Assign friends to whole item (when split equally is chosen)
+  assignFriendsToWholeItem: async (assignmentData: {
+    receiptId: number;
+    itemId: number;
+    friendNames: string[];
+  }) => {
+    return apiCall('/Receipt/assign-friends-to-whole-item', {
+      method: 'POST',
+      body: JSON.stringify({
+        receiptId: assignmentData.receiptId,
+        itemId: assignmentData.itemId,
+        friendNames: assignmentData.friendNames,
+      }),
+    });
+  },
+  
+  // Assign friends to sub items (when assigning to individual units)
+  assignFriendsToItems: async (assignmentData: {
+    receiptId: number;
+    itemAssignments: Array<{
+      itemId: number;
+      friendNames: string[];
+    }>;
+  }) => {
+    return apiCall('/Receipt/assign-friends-to-items', {
+      method: 'POST',
+      body: JSON.stringify({
+        receiptId: assignmentData.receiptId,
+        itemAssignments: assignmentData.itemAssignments,
+      }),
+    });
+  },
 };
 
 // Friends API calls

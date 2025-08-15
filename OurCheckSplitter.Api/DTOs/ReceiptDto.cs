@@ -11,5 +11,6 @@ namespace OurCheckSplitter.Api.DTOs
         public double Tips { get; set; }
         public double Total { get; set; }
         public bool TipsIncludedInTotal { get; set; } = true;
+        public DateTime? CreatedDate { get; set; }
     }
 }
