@@ -189,7 +189,6 @@ namespace OurCheckSplitter.Api.Migrations
                         .HasColumnType("REAL");
 
                     b.Property<string>("TaxType")
-                        .IsRequired()
                         .HasColumnType("TEXT");
 
                     b.Property<double>("Tips")

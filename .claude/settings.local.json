@@ -20,7 +20,14 @@
       "Bash(dotnet ef database:*)",
       "Bash(sqlite3:*)",
       "Bash(tasklist:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npx expo install:*)",
+      "Bash(where ngrok)",
+      "Bash(winget install:*)",
+      "Bash(ngrok:*)",
+      "Bash(refreshenv)",
+      "Bash(timeout:*)",
+      "Bash(Stop-Process -Id 8960 -Force)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"
