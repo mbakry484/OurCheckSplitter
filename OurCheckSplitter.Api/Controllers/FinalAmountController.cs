@@ -180,24 +180,28 @@ namespace OurCheckSplitter.Api.Controllers
             }
 
             var amountToPay = friendAmount.AmountToPay ?? 0;
+            var change = paidAmount - amountToPay;
+            
             if (paidAmount < amountToPay)
             {
-                return BadRequest(new
+                return Ok(new
                 {
                     Message = "Insufficient payment",
-                    RequiredAmount = amountToPay,
+                    AmountToPay = amountToPay,
                     PaidAmount = paidAmount,
+                    Change = change, // This will be negative
+                    IsInsufficientPayment = true,
                     Shortage = amountToPay - paidAmount
                 });
             }
 
-            var change = paidAmount - amountToPay;
             return Ok(new
             {
                 Message = "Change calculated successfully",
                 AmountToPay = amountToPay,
                 PaidAmount = paidAmount,
-                Change = change
+                Change = change,
+                IsInsufficientPayment = false
             });
         }
     }

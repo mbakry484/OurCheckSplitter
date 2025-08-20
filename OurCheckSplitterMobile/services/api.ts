@@ -53,9 +53,26 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     console.log(`Response status: ${response.status}`); // Debug log
     
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorData;
+      const contentType = response.headers.get('content-type');
+      
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json();
+        } else {
+          errorData = await response.text();
+        }
+      } catch (parseError) {
+        errorData = 'Failed to parse error response';
+      }
+      
+      console.error(`HTTP error! status: ${response.status}, body:`, errorData);
+      
+      // Create a detailed error object for specific error cases
+      const error = new Error(`HTTP error! status: ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).data = errorData;
+      throw error;
     }
     
     // Handle different response types

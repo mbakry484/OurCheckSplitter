@@ -201,9 +201,11 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             : p
         )
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to calculate change:', error);
-      Alert.alert('Error', 'Failed to calculate change. Please try again.');
+      
+      // Network or other errors
+      Alert.alert('Error', 'Failed to calculate change. Please check your connection and try again.');
       
       // Reset calculating state
       setFriendPayments(prev =>
@@ -716,12 +718,6 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
                 </Text>
               </View>
 
-              {/* Debug Info */}
-              <View style={styles.debugContainer}>
-                <Text style={styles.debugText}>
-                  Backend amounts: {backendAmounts.length} | Friend payments: {friendPayments.length}
-                </Text>
-              </View>
 
               {/* Friends Payment List */}
               <ScrollView 
@@ -782,13 +778,14 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
                     {payment.change !== null && (
                       <View style={styles.changeResultSection}>
                         <View style={styles.changeResultRow}>
-                          <Text style={styles.changeResultLabel}>Change:</Text>
+                          <Text style={styles.changeResultLabel}>
+                            {payment.change >= 0 ? 'Change:' : 'Still Owes:'}
+                          </Text>
                           <Text style={[
                             styles.changeResultAmount,
                             payment.change >= 0 ? styles.changeResultPositive : styles.changeResultNegative
                           ]}>
                             ${Math.abs(payment.change).toFixed(2)}
-                            {payment.change < 0 && ' (still owes)'}
                           </Text>
                         </View>
                         <TouchableOpacity
@@ -1394,10 +1391,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   changeResultPositive: {
-    color: '#4ECDC4',
+    color: '#00C851', // Bright green for positive change
   },
   changeResultNegative: {
-    color: '#FF3B30',
+    color: '#FF3B30', // Red for insufficient payment/still owes
   },
   clearPaymentButton: {
     flexDirection: 'row',
