@@ -632,6 +632,7 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
             onPress: () => {
               // Prepare receipt data for the results screen
               const receiptData = {
+                receiptId: receiptId, // Include the receiptId for API calls
                 receiptTitle,
                 receiptDate,
                 items: createdItems,

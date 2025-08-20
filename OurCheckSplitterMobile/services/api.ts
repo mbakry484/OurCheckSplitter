@@ -166,6 +166,11 @@ export const receiptApi = {
       }),
     });
   },
+
+  // Get final amounts for each friend (with proper tax/tip distribution)
+  getFinalAmounts: async (receiptId: number) => {
+    return apiCall(`/FinalAmount/${receiptId}/friend-amounts`);
+  },
 };
 
 // Friends API calls

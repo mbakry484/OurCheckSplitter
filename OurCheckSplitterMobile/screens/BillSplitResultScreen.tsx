@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,14 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
+import { api } from '../services/api';
 
 interface BillSplitResultScreenProps {
   navigation?: any;
@@ -55,6 +57,12 @@ interface FriendBillItem {
   totalPrice: number;
 }
 
+interface BackendFriendAmount {
+  id: number;
+  name: string;
+  amountToPay: number;
+}
+
 const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps) => {
   const insets = useSafeAreaInsets();
   const { receiptData } = route?.params || {};
@@ -62,10 +70,83 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const scrollRef = useRef<ScrollView>(null);
   const fullReceiptRef = useRef<View>(null);
   const [isSharing, setIsSharing] = useState(false);
+  const [isLoadingAmounts, setIsLoadingAmounts] = useState(true);
+  const [backendAmounts, setBackendAmounts] = useState<BackendFriendAmount[]>([]);
+  
+  // Fetch correct amounts from backend
+  useEffect(() => {
+    const fetchFinalAmounts = async () => {
+      if (!receiptData?.receiptId) {
+        console.error('No receipt ID found');
+        setIsLoadingAmounts(false);
+        return;
+      }
+
+      try {
+        console.log('Fetching final amounts for receipt ID:', receiptData.receiptId);
+        const amounts = await api.receipts.getFinalAmounts(receiptData.receiptId);
+        console.log('Backend amounts received:', amounts);
+        setBackendAmounts(amounts);
+      } catch (error) {
+        console.error('Failed to fetch final amounts:', error);
+        Alert.alert(
+          'Error', 
+          'Failed to calculate final amounts. Using local calculations as fallback.',
+          [{ text: 'OK' }]
+        );
+      } finally {
+        setIsLoadingAmounts(false);
+      }
+    };
+
+    fetchFinalAmounts();
+  }, [receiptData?.receiptId]);
   
   const calculateFriendBills = () => {
     if (!receiptData) return [];
     
+    // If we have backend amounts, use those (they include proper tax/tip distribution)
+    if (backendAmounts.length > 0) {
+      console.log('Using backend amounts:', backendAmounts);
+      
+      return backendAmounts.map((backendFriend) => {
+        // Find the corresponding friend data for avatar/display
+        const friendData = receiptData.selectedFriends?.find(
+          (f: Friend) => f.name === backendFriend.name || f.id === backendFriend.id.toString()
+        );
+        
+        // Create a detailed items list by matching with local receipt data
+        const items: FriendBillItem[] = [];
+        if (receiptData.items) {
+          receiptData.items.forEach((item: ReceiptItem) => {
+            if (item.assignedFriends.includes(friendData?.id || backendFriend.id.toString())) {
+              const itemPrice = parseFloat(item.price) || 0;
+              const quantity = parseInt(item.quantity) || 1;
+              
+              items.push({
+                itemName: item.name,
+                quantity: quantity,
+                pricePerUnit: itemPrice / quantity,
+                totalPrice: itemPrice / (item.assignedFriends.length || 1) // Basic split for display
+              });
+            }
+          });
+        }
+        
+        return {
+          friend: friendData || { 
+            id: backendFriend.id.toString(), 
+            name: backendFriend.name, 
+            avatar: '👤' 
+          },
+          items: items,
+          totalAmount: backendFriend.amountToPay // Use the correct backend amount
+        };
+      });
+    }
+    
+    // Fallback to local calculation if backend amounts not available
+    console.log('Using fallback local calculation');
     const friendBills: FriendBill[] = [];
     const { items, friends, selectedFriends } = receiptData;
     
@@ -78,7 +159,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
       });
     });
     
-    // Calculate bills for each item
+    // Calculate bills for each item (local fallback logic)
     items.forEach((item: ReceiptItem) => {
       const itemPrice = parseFloat(item.price) || 0;
       const quantity = parseInt(item.quantity) || 1;
@@ -322,8 +403,17 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
       
       {/* Content Area with Receipt and Buttons */}
       <View style={styles.contentArea}>
+        {/* Loading Indicator */}
+        {isLoadingAmounts && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Calculating final amounts...</Text>
+          </View>
+        )}
+
         {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
-        <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
+        {!isLoadingAmounts && (
+          <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
           <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
             {/* Receipt Title and Date */}
             <View style={styles.receiptHeaderArea}>
@@ -388,8 +478,10 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             </View>
           </ScrollView>
         </View>
+        )}
         
         {/* Action Buttons - Fixed at bottom */}
+        {!isLoadingAmounts && (
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.calculateChangeButton} onPress={() => {}}>
             <Text style={styles.calculateChangeButtonText}>Calculate Change</Text>
@@ -398,6 +490,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
+        )}
       </View>
 
       {/* Hidden full receipt for sharing - rendered off-screen */}
@@ -542,6 +635,18 @@ const styles = StyleSheet.create({
   contentArea: {
     flex: 1,
     flexDirection: 'column',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   receiptContainer: {
     backgroundColor: 'white',
