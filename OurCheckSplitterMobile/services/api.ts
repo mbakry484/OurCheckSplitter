@@ -171,6 +171,15 @@ export const receiptApi = {
   getFinalAmounts: async (receiptId: number) => {
     return apiCall(`/FinalAmount/${receiptId}/friend-amounts`);
   },
+
+  // Calculate change for a friend's payment
+  calculateChange: async (receiptId: number, friendId: number, amountPaid: number) => {
+    console.log(`API call: /FinalAmount/${receiptId}/${friendId}/CalculateChange with amount: ${amountPaid}`);
+    // Backend expects paidAmount as query parameter since it's not in route template
+    return apiCall(`/FinalAmount/${receiptId}/${friendId}/CalculateChange?paidAmount=${amountPaid}`, {
+      method: 'POST',
+    });
+  },
 };
 
 // Friends API calls

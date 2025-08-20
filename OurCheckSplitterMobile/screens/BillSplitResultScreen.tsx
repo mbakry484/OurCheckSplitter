@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -63,6 +65,13 @@ interface BackendFriendAmount {
   amountToPay: number;
 }
 
+interface FriendPayment {
+  friend: BackendFriendAmount;
+  amountPaid: string;
+  change: number | null;
+  isCalculating: boolean;
+}
+
 const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps) => {
   const insets = useSafeAreaInsets();
   const { receiptData } = route?.params || {};
@@ -72,6 +81,8 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
   const [isSharing, setIsSharing] = useState(false);
   const [isLoadingAmounts, setIsLoadingAmounts] = useState(true);
   const [backendAmounts, setBackendAmounts] = useState<BackendFriendAmount[]>([]);
+  const [showCalculateChangeModal, setShowCalculateChangeModal] = useState(false);
+  const [friendPayments, setFriendPayments] = useState<FriendPayment[]>([]);
   
   // Fetch correct amounts from backend
   useEffect(() => {
@@ -87,6 +98,15 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         const amounts = await api.receipts.getFinalAmounts(receiptData.receiptId);
         console.log('Backend amounts received:', amounts);
         setBackendAmounts(amounts);
+        
+        // Initialize friend payments for Calculate Change functionality
+        const payments: FriendPayment[] = amounts.map((friend: BackendFriendAmount) => ({
+          friend: friend,
+          amountPaid: '',
+          change: null,
+          isCalculating: false,
+        }));
+        setFriendPayments(payments);
       } catch (error) {
         console.error('Failed to fetch final amounts:', error);
         Alert.alert(
@@ -101,6 +121,110 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
 
     fetchFinalAmounts();
   }, [receiptData?.receiptId]);
+
+  // Calculate Change Functions
+  const openCalculateChangeModal = () => {
+    console.log('Opening Calculate Change Modal');
+    console.log('backendAmounts:', backendAmounts);
+    console.log('friendPayments:', friendPayments);
+    
+    // Make sure friendPayments is populated
+    if (backendAmounts.length > 0 && friendPayments.length === 0) {
+      const payments: FriendPayment[] = backendAmounts.map((friend: BackendFriendAmount) => ({
+        friend: friend,
+        amountPaid: '',
+        change: null,
+        isCalculating: false,
+      }));
+      setFriendPayments(payments);
+      console.log('Initialized friendPayments:', payments);
+    }
+    
+    setShowCalculateChangeModal(true);
+  };
+
+  const closeCalculateChangeModal = () => {
+    setShowCalculateChangeModal(false);
+    // Reset all payment inputs and calculations
+    setFriendPayments(prev =>
+      prev.map(payment => ({
+        ...payment,
+        amountPaid: '',
+        change: null,
+        isCalculating: false,
+      }))
+    );
+  };
+
+  const updateAmountPaid = (friendId: number, amount: string) => {
+    setFriendPayments(prev =>
+      prev.map(payment =>
+        payment.friend.id === friendId
+          ? { ...payment, amountPaid: amount, change: null }
+          : payment
+      )
+    );
+  };
+
+  const calculateChange = async (friendId: number) => {
+    const payment = friendPayments.find(p => p.friend.id === friendId);
+    if (!payment || !payment.amountPaid.trim()) {
+      Alert.alert('Error', 'Please enter the amount paid');
+      return;
+    }
+
+    const amountPaid = parseFloat(payment.amountPaid);
+    if (isNaN(amountPaid) || amountPaid < 0) {
+      Alert.alert('Error', 'Please enter a valid amount');
+      return;
+    }
+
+    // Set calculating state
+    setFriendPayments(prev =>
+      prev.map(p =>
+        p.friend.id === friendId
+          ? { ...p, isCalculating: true }
+          : p
+      )
+    );
+
+    try {
+      console.log(`Calculating change for friend ${friendId}, amount paid: ${amountPaid}`);
+      const result = await api.receipts.calculateChange(receiptData.receiptId, friendId, amountPaid);
+      console.log('Change calculation result:', result);
+      
+      // Update the change amount
+      setFriendPayments(prev =>
+        prev.map(p =>
+          p.friend.id === friendId
+            ? { ...p, change: result.change, isCalculating: false }
+            : p
+        )
+      );
+    } catch (error) {
+      console.error('Failed to calculate change:', error);
+      Alert.alert('Error', 'Failed to calculate change. Please try again.');
+      
+      // Reset calculating state
+      setFriendPayments(prev =>
+        prev.map(p =>
+          p.friend.id === friendId
+            ? { ...p, isCalculating: false }
+            : p
+        )
+      );
+    }
+  };
+
+  const clearCalculation = (friendId: number) => {
+    setFriendPayments(prev =>
+      prev.map(p =>
+        p.friend.id === friendId
+          ? { ...p, amountPaid: '', change: null, isCalculating: false }
+          : p
+      )
+    );
+  };
   
   const calculateFriendBills = () => {
     if (!receiptData) return [];
@@ -483,7 +607,10 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
         {/* Action Buttons - Fixed at bottom */}
         {!isLoadingAmounts && (
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.calculateChangeButton} onPress={() => {}}>
+          <TouchableOpacity 
+            style={styles.calculateChangeButton} 
+            onPress={openCalculateChangeModal}
+          >
             <Text style={styles.calculateChangeButtonText}>Calculate Change</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.saveButton} onPress={() => navigation.navigate('Home')}>
@@ -561,6 +688,136 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
           </Text>
         </View>
       </View>
+
+      {/* Calculate Change Modal */}
+      <Modal
+        visible={showCalculateChangeModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={closeCalculateChangeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.calculateChangeModal}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Calculate Change</Text>
+              <TouchableOpacity onPress={closeCalculateChangeModal}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Content */}
+            <View style={styles.modalContent}>
+              {/* Instructions */}
+              <View style={styles.modalInstructions}>
+                <Ionicons name="information-circle-outline" size={20} color="#007AFF" />
+                <Text style={styles.modalInstructionsText}>
+                  Enter the amount each friend paid to calculate their change
+                </Text>
+              </View>
+
+              {/* Debug Info */}
+              <View style={styles.debugContainer}>
+                <Text style={styles.debugText}>
+                  Backend amounts: {backendAmounts.length} | Friend payments: {friendPayments.length}
+                </Text>
+              </View>
+
+              {/* Friends Payment List */}
+              <ScrollView 
+                style={styles.friendPaymentsList}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                {friendPayments.length === 0 ? (
+                  <View style={styles.noFriendsContainer}>
+                    <Text style={styles.noFriendsText}>No friends data available</Text>
+                    <Text style={styles.debugText}>
+                      This means friendPayments array is empty. Check console logs.
+                    </Text>
+                  </View>
+                ) : (
+                  friendPayments.map((payment) => (
+                  <View key={payment.friend.id} style={styles.friendPaymentCard}>
+                    {/* Friend Header */}
+                    <View style={styles.friendPaymentHeader}>
+                      <Text style={styles.friendPaymentName}>{payment.friend.name}</Text>
+                      <Text style={styles.friendPaymentAmount}>
+                        Owes: ${payment.friend.amountToPay.toFixed(2)}
+                      </Text>
+                    </View>
+
+                    {/* Payment Input */}
+                    <View style={styles.paymentInputSection}>
+                      <Text style={styles.paymentInputLabel}>Amount Paid:</Text>
+                      <View style={styles.paymentInputRow}>
+                        <Text style={styles.dollarSign}>$</Text>
+                        <TextInput
+                          style={styles.paymentInputField}
+                          placeholder="0.00"
+                          placeholderTextColor="#999"
+                          value={payment.amountPaid}
+                          onChangeText={(value) => updateAmountPaid(payment.friend.id, value)}
+                          keyboardType="decimal-pad"
+                          editable={!payment.isCalculating}
+                        />
+                        <TouchableOpacity
+                          style={[
+                            styles.calculatePaymentButton,
+                            (!payment.amountPaid.trim() || payment.isCalculating) && styles.calculatePaymentButtonDisabled
+                          ]}
+                          onPress={() => calculateChange(payment.friend.id)}
+                          disabled={!payment.amountPaid.trim() || payment.isCalculating}
+                        >
+                          {payment.isCalculating ? (
+                            <ActivityIndicator size="small" color="white" />
+                          ) : (
+                            <Text style={styles.calculatePaymentButtonText}>Calculate</Text>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Change Result */}
+                    {payment.change !== null && (
+                      <View style={styles.changeResultSection}>
+                        <View style={styles.changeResultRow}>
+                          <Text style={styles.changeResultLabel}>Change:</Text>
+                          <Text style={[
+                            styles.changeResultAmount,
+                            payment.change >= 0 ? styles.changeResultPositive : styles.changeResultNegative
+                          ]}>
+                            ${Math.abs(payment.change).toFixed(2)}
+                            {payment.change < 0 && ' (still owes)'}
+                          </Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.clearPaymentButton}
+                          onPress={() => clearCalculation(payment.friend.id)}
+                        >
+                          <Ionicons name="refresh-outline" size={16} color="#666" />
+                          <Text style={styles.clearPaymentButtonText}>Clear</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                  ))
+                )}
+              </ScrollView>
+            </View>
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={closeCalculateChangeModal}
+              >
+                <Text style={styles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -975,6 +1232,219 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: 'white',
+  },
+  
+  // Calculate Change Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calculateChangeModal: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    width: screenDimensions.width - 32,
+    height: screenDimensions.height - 100,
+    overflow: 'hidden',
+    flex: 1,
+    maxHeight: screenDimensions.height - 100,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  modalScrollContent: {
+    paddingBottom: 20,
+    gap: 16,
+  },
+  debugContainer: {
+    backgroundColor: '#FFF9E6',
+    padding: 8,
+    borderRadius: 4,
+    marginBottom: 12,
+  },
+  modalInstructions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    gap: 8,
+  },
+  modalInstructionsText: {
+    fontSize: 14,
+    color: '#007AFF',
+    flex: 1,
+    fontWeight: '500',
+  },
+  friendPaymentsList: {
+    flex: 1,
+  },
+  friendPaymentCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  friendPaymentHeader: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  friendPaymentName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  friendPaymentAmount: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  paymentInputSection: {
+    marginBottom: 12,
+  },
+  paymentInputLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  paymentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dollarSign: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#333',
+    minWidth: 20,
+  },
+  paymentInputField: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    textAlign: 'center',
+  },
+  calculatePaymentButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minWidth: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calculatePaymentButtonDisabled: {
+    backgroundColor: '#E5E5E5',
+    opacity: 0.6,
+  },
+  calculatePaymentButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'white',
+  },
+  changeResultSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  changeResultRow: {
+    flex: 1,
+  },
+  changeResultLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  changeResultAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  changeResultPositive: {
+    color: '#4ECDC4',
+  },
+  changeResultNegative: {
+    color: '#FF3B30',
+  },
+  clearPaymentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 6,
+    gap: 4,
+  },
+  clearPaymentButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  modalFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  modalCloseButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+  },
+  noFriendsContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noFriendsText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+  },
+  debugText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });
 
