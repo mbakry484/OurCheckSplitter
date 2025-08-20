@@ -164,17 +164,13 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         friendAmounts = await api.receipts.getFinalAmounts(parseInt(receiptId));
         console.log('HomeScreen - Friend amounts response:', JSON.stringify(friendAmounts, null, 2));
       } catch (friendAmountsError: any) {
-        console.log('HomeScreen - FinalAmounts API error caught:', friendAmountsError.message);
         if (friendAmountsError.message?.includes('status: 400')) {
           console.log('HomeScreen - Receipt has no assigned items, using empty friend amounts');
           friendAmounts = [];
         } else {
-          console.log('HomeScreen - Re-throwing non-400 error:', friendAmountsError);
           throw friendAmountsError; // Re-throw if it's a different error
         }
       }
-      
-      console.log('HomeScreen - Continuing with friend amounts:', friendAmounts);
       
       // Process items data
       const processedItems = receiptDetails?.items?.map((item: any) => {
@@ -392,9 +388,6 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   const renderItemsReceipt = () => {
     if (!selectedReceipt) return null;
 
-    console.log('HomeScreen - renderItemsReceipt called with selectedReceipt:', JSON.stringify(selectedReceipt, null, 2));
-    console.log('HomeScreen - selectedReceipt.items:', selectedReceipt.items);
-
     return (
       <View style={styles.receiptContainer}>
         <ScrollView style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent}>
@@ -494,7 +487,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
             })
             ) : (
               <Text style={styles.noItemsText}>No friend assignments found - receipt has no assigned items</Text>
-            )}
+            )},
           </View>
 
           {/* Grand Total */}

@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 import { friendsApi } from '../services/api';
 import { PaginatedResponseDto, FriendDto } from '../types/api';
+import { api } from '../services/api';
 
 interface Receipt {
   id: string;
@@ -26,6 +27,22 @@ interface Receipt {
   totalAmount: number;
   friendPaidAmount: number;
   participants: string[];
+  items?: ReceiptItem[];
+  friendAmounts?: FriendAmount[];
+}
+
+interface ReceiptItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  assignedFriends: string[];
+}
+
+interface FriendAmount {
+  id: number;
+  name: string;
+  amountToPay: number;
 }
 
 interface Friend {
@@ -59,6 +76,9 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     totalCount: 0,
   });
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
+  const [selectedFriendReceipt, setSelectedFriendReceipt] = useState<Receipt | null>(null);
+  const [receiptViewMode, setReceiptViewMode] = useState<'items' | 'friends'>('items');
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
   // Handle navigation from HomeScreen
   useEffect(() => {
@@ -68,6 +88,139 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
   }, [route?.params?.selectedFriend]);
 
   const PAGE_SIZE = 10;
+
+  // Fetch detailed receipt information including items and friend amounts
+  const fetchReceiptDetails = async (receiptId: string) => {
+    try {
+      setLoadingDetails(prev => new Set([...prev, receiptId]));
+      
+      // Fetch detailed receipt information
+      console.log('Fetching receipt details for ID:', receiptId);
+      const receiptDetails = await api.receipts.getReceiptById(parseInt(receiptId));
+      console.log('Receipt details response:', JSON.stringify(receiptDetails, null, 2));
+      
+      // Fetch friend amounts for this receipt
+      console.log('Fetching friend amounts for receipt ID:', receiptId);
+      let friendAmounts = [];
+      try {
+        friendAmounts = await api.receipts.getFinalAmounts(parseInt(receiptId));
+        console.log('Friend amounts response:', JSON.stringify(friendAmounts, null, 2));
+      } catch (friendAmountsError: any) {
+        console.log('FriendsScreen - FinalAmounts API error caught:', friendAmountsError.message);
+        if (friendAmountsError.message?.includes('status: 400')) {
+          console.log('FriendsScreen - Receipt has no assigned items, using empty friend amounts');
+          friendAmounts = [];
+        } else {
+          console.log('FriendsScreen - Re-throwing non-400 error:', friendAmountsError);
+          throw friendAmountsError; // Re-throw if it's a different error
+        }
+      }
+      
+      console.log('FriendsScreen - Continuing with friend amounts:', friendAmounts);
+      
+      // Process items data
+      const processedItems = receiptDetails?.items?.map((item: any) => {
+        console.log('Processing item:', JSON.stringify(item, null, 2));
+        return {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          assignedFriends: item.assignments?.flatMap((assignment: any) => 
+            assignment.assignedFriends?.map((friend: any) => friend.name) || []
+          ) || [],
+        };
+      }) || [];
+      console.log('Processed items:', JSON.stringify(processedItems, null, 2));
+      
+      // Process friend amounts data
+      const processedFriendAmounts = friendAmounts?.map((friend: any) => ({
+        id: friend.id,
+        name: friend.name,
+        amountToPay: friend.amountToPay,
+      })) || [];
+      console.log('Processed friend amounts:', JSON.stringify(processedFriendAmounts, null, 2));
+      
+      // Create the updated receipt data
+      const updatedReceiptData = {
+        items: processedItems,
+        friendAmounts: processedFriendAmounts,
+      };
+      
+      // Update the selected friend's receipt with detailed information
+      if (selectedFriend) {
+        setSelectedFriend(prev => {
+          if (!prev) return prev;
+          
+          const updatedFriend = {
+            ...prev,
+            detailedReceipts: prev.detailedReceipts?.map(receipt => {
+              if (receipt.id === receiptId) {
+                const updatedReceipt = {
+                  ...receipt,
+                  ...updatedReceiptData,
+                };
+                console.log('Updated receipt for friend:', JSON.stringify(updatedReceipt, null, 2));
+                return updatedReceipt;
+              }
+              return receipt;
+            })
+          };
+          console.log('Updated friend with detailed receipt:', JSON.stringify(updatedFriend, null, 2));
+          return updatedFriend;
+        });
+      }
+      
+      // Update selectedFriendReceipt if it's the same receipt
+      if (selectedFriendReceipt && selectedFriendReceipt.id === receiptId) {
+        const updatedSelectedFriendReceipt = {
+          ...selectedFriendReceipt,
+          ...updatedReceiptData,
+        };
+        console.log('Updating selectedFriendReceipt with:', JSON.stringify(updatedSelectedFriendReceipt, null, 2));
+        setSelectedFriendReceipt(updatedSelectedFriendReceipt);
+      }
+      
+      // Fallback: Also update selectedFriendReceipt directly if it wasn't updated above
+      setSelectedFriendReceipt(prev => {
+        if (prev && prev.id === receiptId) {
+          const fallbackUpdate = {
+            ...prev,
+            ...updatedReceiptData,
+          };
+          console.log('FriendsScreen - Fallback update for selectedFriendReceipt:', JSON.stringify(fallbackUpdate, null, 2));
+          return fallbackUpdate;
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error('Failed to fetch receipt details:', error);
+      Alert.alert('Error', 'Failed to load receipt details. Please try again.');
+    } finally {
+      setLoadingDetails(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(receiptId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle receipt press in friend detail view
+  const handleFriendReceiptPress = async (receipt: Receipt) => {
+    setSelectedFriendReceipt(receipt);
+    setReceiptViewMode('items');
+    
+    // Fetch details if not already loaded
+    if (!receipt.items || !receipt.friendAmounts) {
+      await fetchReceiptDetails(receipt.id);
+    }
+  };
+
+  // Handle back to friend receipts list
+  const handleBackToFriendReceipts = () => {
+    setSelectedFriendReceipt(null);
+    setReceiptViewMode('items');
+  };
 
   // Load friends on component mount
   useEffect(() => {
@@ -464,13 +617,17 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
         <ScrollView style={styles.friendReceiptsContainer} showsVerticalScrollIndicator={false}>
           <Text style={styles.receiptsListTitle}>Receipts</Text>
           {selectedFriend.detailedReceipts?.map((receipt) => (
-            <TouchableOpacity key={receipt.id} style={styles.friendReceiptItem}>
+            <TouchableOpacity 
+              key={receipt.id} 
+              style={styles.friendReceiptItem}
+              onPress={() => handleFriendReceiptPress(receipt)}
+            >
               <View style={styles.friendReceiptLeft}>
                 <Text style={styles.friendReceiptTitle}>{receipt.title}</Text>
                 <Text style={styles.friendReceiptDate}>{receipt.date}</Text>
                 <View style={styles.friendPaidContainer}>
                   <Text style={styles.friendReceiptType}>
-                    {selectedFriend.name} Paid
+                    {selectedFriend.name} Owes
                   </Text>
                   <Text style={styles.friendPaidAmount}>
                     ${receipt.friendPaidAmount.toFixed(2)}
@@ -488,6 +645,12 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
                 <Text style={styles.friendReceiptAmount}>
                   ${receipt.totalAmount.toFixed(2)}
                 </Text>
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={20} 
+                  color="#666" 
+                  style={styles.expandIcon}
+                />
               </View>
             </TouchableOpacity>
           )) || selectedFriend.receipts.map((receipt, index) => (
@@ -503,6 +666,184 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
       </View>
     );
   };
+
+  // Render Items Receipt View for Friend
+  const renderFriendItemsReceipt = () => {
+    if (!selectedFriendReceipt) return null;
+
+    return (
+      <View style={styles.receiptContainer}>
+        <ScrollView style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent}>
+          {/* Receipt Title and Date */}
+          <View style={styles.receiptHeaderArea}>
+            <Text style={styles.receiptTitle}>{selectedFriendReceipt.title}</Text>
+            <Text style={styles.receiptDate}>{selectedFriendReceipt.date}</Text>
+            <View style={styles.separator} />
+          </View>
+
+          {/* Items Section */}
+          <View style={styles.itemsSection}>
+            {selectedFriendReceipt.items && selectedFriendReceipt.items.length > 0 ? (
+              selectedFriendReceipt.items.map((item) => (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemNameBW}>{item.name}</Text>
+                    <Text style={styles.itemQuantityBW}>Qty: {item.quantity}</Text>
+                    {item.assignedFriends.length > 0 && (
+                      <Text style={styles.assignedFriendsBW}>
+                        → {item.assignedFriends.join(', ')}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={styles.itemPriceBW}>${item.price.toFixed(2)}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noItemsText}>No items found</Text>
+            )}
+          </View>
+
+          {/* Total */}
+          <View style={styles.totalRowBW}>
+            <Text style={styles.totalLabelBW}>TOTAL</Text>
+            <Text style={styles.totalValueBW}>
+              ${selectedFriendReceipt.totalAmount.toFixed(2)}
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Render Friends Summary View for Friend
+  const renderFriendsSummaryForFriend = () => {
+    if (!selectedFriendReceipt || !selectedFriend) return null;
+
+    return (
+      <View style={styles.receiptContainer}>
+        <ScrollView style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent}>
+          {/* Receipt Title and Date */}
+          <View style={styles.receiptHeaderArea}>
+            <Text style={styles.receiptTitle}>{selectedFriendReceipt.title}</Text>
+            <Text style={styles.receiptDate}>{selectedFriendReceipt.date}</Text>
+            <View style={styles.separator} />
+          </View>
+
+          {/* Friend Amounts */}
+          <View style={styles.friendBlocks}>
+            {selectedFriendReceipt.friendAmounts && selectedFriendReceipt.friendAmounts.length > 0 ? (
+              selectedFriendReceipt.friendAmounts.map((friend) => {
+              // Find items assigned to this friend
+              const friendItems = selectedFriendReceipt.items?.filter(item => 
+                item.assignedFriends.includes(friend.name)
+              ) || [];
+              
+              // Format items like BillSplitResultScreen - comma-separated with wrapping
+              const parts = friendItems.map((it) => `${it.name} ($${it.price.toFixed(2)})`);
+              const maxChars = 48;
+              const lines: string[] = [];
+              let current = '';
+              for (const p of parts) {
+                if (current.length === 0) current = p;
+                else if ((current + ', ' + p).length <= maxChars) current += ', ' + p;
+                else {
+                  lines.push(current);
+                  current = p;
+                }
+              }
+              if (current.length) lines.push(current);
+              
+              return (
+                <View key={friend.id} style={styles.friendBlock}>
+                  <View style={styles.friendRow}>
+                    <Text style={[
+                      styles.friendNameBW,
+                      friend.name === selectedFriend.name && styles.highlightedFriendNameBW
+                    ]}>
+                      {friend.name === selectedFriend.name ? `${friend.name} (This Friend)` : friend.name}
+                    </Text>
+                    <Text style={[
+                      styles.friendAmountBW,
+                      friend.name === selectedFriend.name && styles.highlightedFriendAmountBW
+                    ]}>
+                      ${friend.amountToPay.toFixed(2)}
+                    </Text>
+                  </View>
+                  {lines.map((ln, idx) => (
+                    <Text key={idx} style={[
+                      styles.itemsInlineBW,
+                      friend.name === selectedFriend.name && styles.highlightedItemsInlineBW
+                    ]}>
+                      {ln}
+                    </Text>
+                  ))}
+                  <View style={styles.dotRule} />
+                </View>
+              );
+            })
+            ) : (
+              <Text style={styles.noItemsText}>No friend assignments found - receipt has no assigned items</Text>
+            )}
+          </View>
+
+          {/* Grand Total */}
+          <View style={styles.totalRowBW}>
+            <Text style={styles.totalLabelBW}>TOTAL</Text>
+            <Text style={styles.totalValueBW}>
+              ${selectedFriendReceipt.totalAmount.toFixed(2)}
+            </Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Render Friend Receipt Detail View
+  const renderFriendReceiptDetail = () => {
+    if (!selectedFriendReceipt || !selectedFriend) return null;
+
+    return (
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: Math.max(16, insets.top) }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackToFriendReceipts}>
+            <Ionicons name="arrow-back" size={24} color="#007AFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{selectedFriend.name}'s Receipt</Text>
+          <View style={styles.addButton} />
+        </View>
+
+        {/* View Toggle */}
+        <View style={styles.viewToggle}>
+          <TouchableOpacity
+            style={[styles.toggleButton, receiptViewMode === 'items' && styles.activeToggleButton]}
+            onPress={() => setReceiptViewMode('items')}
+          >
+            <Text style={[styles.toggleButtonText, receiptViewMode === 'items' && styles.activeToggleButtonText]}>
+              Items
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleButton, receiptViewMode === 'friends' && styles.activeToggleButton]}
+            onPress={() => setReceiptViewMode('friends')}
+          >
+            <Text style={[styles.toggleButtonText, receiptViewMode === 'friends' && styles.activeToggleButtonText]}>
+              Friends
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          {receiptViewMode === 'items' ? renderFriendItemsReceipt() : renderFriendsSummaryForFriend()}
+        </View>
+      </View>
+    );
+  };
+
+  if (selectedFriendReceipt) {
+    return renderFriendReceiptDetail();
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -958,7 +1299,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
-  // Friend receipt styles (HomeScreen format)
+  // Friend receipt styles (updated for click navigation)
   friendReceiptItem: {
     flexDirection: 'row',
     backgroundColor: 'white',
@@ -1031,6 +1372,301 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#4ECDC4',
+  },
+  expandIcon: {
+    marginTop: 4,
+  },
+  receiptDetails: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    paddingTop: 15,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+  },
+  detailsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingDetailsText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  itemsSection: {
+    marginBottom: 20,
+  },
+  itemCard: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  itemName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    flex: 1,
+  },
+  itemPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  itemQuantity: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  assignedFriends: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  assignedLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  assignedNames: {
+    fontSize: 12,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  friendAmountsSection: {
+    marginBottom: 10,
+  },
+  friendAmountCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F0F8FF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#007AFF',
+  },
+  highlightedFriendCard: {
+    backgroundColor: '#E8F5E8',
+    borderLeftColor: '#4CAF50',
+  },
+  friendAmountName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  highlightedFriendName: {
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  friendAmountValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  highlightedFriendAmount: {
+    color: '#4CAF50',
+  },
+  // Receipt detail view styles for FriendsScreen
+  receiptContainer: {
+    backgroundColor: 'white',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+    flex: 1,
+    width: screenDimensions.width - 32,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 12,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  receiptScroll: {
+    backgroundColor: 'white',
+  },
+  receiptScrollContent: {
+    paddingBottom: 8,
+    backgroundColor: 'white',
+  },
+  receiptHeaderArea: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  receiptTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: 'black',
+    textAlign: 'center',
+  },
+  receiptDate: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: 'black',
+    width: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  // Items section styles
+  itemsSection: {
+    marginBottom: 20,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemNameBW: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'black',
+    marginBottom: 2,
+  },
+  itemQuantityBW: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  assignedFriendsBW: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontStyle: 'italic',
+  },
+  itemPriceBW: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'black',
+  },
+  noItemsText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  // Friends section styles
+  friendBlocks: {
+    marginBottom: 20,
+  },
+  friendBlock: {
+    marginBottom: 8,
+  },
+  friendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  friendNameBW: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  highlightedFriendNameBW: {
+    color: '#2E7D32',
+  },
+  friendAmountBW: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  highlightedFriendAmountBW: {
+    color: '#4CAF50',
+  },
+  itemsInlineBW: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  highlightedItemsInlineBW: {
+    color: '#2E7D32',
+    fontWeight: '500',
+  },
+  dotRule: {
+    height: 1,
+    borderBottomColor: '#999',
+    borderBottomWidth: 1,
+    borderStyle: 'dotted',
+    marginTop: 6,
+  },
+  totalRowBW: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 2,
+    borderTopColor: 'black',
+    paddingTop: 8,
+    marginTop: 8,
+  },
+  totalLabelBW: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  totalValueBW: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'black',
+  },
+  // View toggle styles
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#E9ECEF',
+    borderRadius: 8,
+    padding: 4,
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  activeToggleButton: {
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  activeToggleButtonText: {
+    color: '#007AFF',
   },
   bottomNav: {
     flexDirection: 'row',

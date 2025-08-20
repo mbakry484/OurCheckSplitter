@@ -20,8 +20,8 @@ interface LoginScreenProps {
 
 const LoginScreen = ({ navigation, onLoginSuccess }: LoginScreenProps) => {
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('test@example.com'); // Default for testing
-  const [password, setPassword] = useState('password123'); // Default for testing
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 

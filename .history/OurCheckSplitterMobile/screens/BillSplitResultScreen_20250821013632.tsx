@@ -95,21 +95,8 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
 
       try {
         console.log('Fetching final amounts for receipt ID:', receiptData.receiptId);
-        let amounts = [];
-        try {
-          amounts = await api.receipts.getFinalAmounts(receiptData.receiptId);
-          console.log('Backend amounts received:', amounts);
-        } catch (finalAmountsError: any) {
-          console.log('BillSplitResultScreen - FinalAmounts API error caught:', finalAmountsError.message);
-          if (finalAmountsError.message?.includes('status: 400')) {
-            console.log('BillSplitResultScreen - Receipt has no assigned items, using empty amounts');
-            amounts = [];
-          } else {
-            throw finalAmountsError; // Re-throw if it's a different error
-          }
-        }
-        
-        console.log('BillSplitResultScreen - Continuing with amounts:', amounts);
+        const amounts = await api.receipts.getFinalAmounts(receiptData.receiptId);
+        console.log('Backend amounts received:', amounts);
         setBackendAmounts(amounts);
         
         // Initialize friend payments for Calculate Change functionality
@@ -404,7 +391,7 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
             // Capture the full receipt component (rendered off-screen)
             const uri = await captureRef(fullReceiptRef.current, {
               format: 'png',
-              quality: 0.9,
+              quality: 0.9,the 
               result: 'tmpfile',
             });
             
