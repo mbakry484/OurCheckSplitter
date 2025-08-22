@@ -550,9 +550,10 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
           </View>
         )}
 
-        {/* Receipt Summary - Fixed Size Container (scrollable when content is tall) */}
+        {/* Receipt Summary - Flexible Container */}
         {!isLoadingAmounts && (
-          <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
+          <View style={styles.receiptWrapper}>
+            <View ref={receiptRef} style={styles.receiptContainer} collapsable={false}>
           <ScrollView ref={scrollRef} style={styles.receiptScroll} contentContainerStyle={styles.receiptScrollContent} showsVerticalScrollIndicator={true}>
             {/* Receipt Title and Date */}
             <View style={styles.receiptHeaderArea}>
@@ -616,7 +617,8 @@ const BillSplitResultScreen = ({ navigation, route }: BillSplitResultScreenProps
               </Text>
             </View>
           </ScrollView>
-        </View>
+            </View>
+          </View>
         )}
         
         {/* Action Buttons - Fixed at bottom */}
@@ -915,12 +917,15 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
+  receiptWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    // Allow flexible height but ensure buttons stay visible
-    flex: 1,
+    // Remove flex: 1 to allow height to match content
     // Add margins so it looks like a floating ticket
     width: screenDimensions.width - 32,
     marginHorizontal: 16,

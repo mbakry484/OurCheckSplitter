@@ -16,34 +16,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 import { receiptApi } from '../services/api';
-import { ReceiptResponseDto, PaginatedResponseDto, convertReceiptToHomeFormat } from '../types/api';
+import { ReceiptResponseDto, PaginatedResponseDto, convertReceiptToHomeFormat, HomeScreenReceipt, ReceiptItem, FriendAmount } from '../types/api';
 import { api } from '../services/api';
 
-interface Receipt {
-  id: string;
-  title: string;
-  date: string;
-  totalAmount: number;
-  userPaidAmount: number;
-  type: 'paid';
-  participants: string[]; // friend names
-  items?: ReceiptItem[];
-  friendAmounts?: FriendAmount[];
-}
-
-interface ReceiptItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  assignedFriends: string[];
-}
-
-interface FriendAmount {
-  id: number;
-  name: string;
-  amountToPay: number;
-}
 
 interface ReceiptsScreenProps {
   navigation?: any;
@@ -52,7 +27,7 @@ interface ReceiptsScreenProps {
 const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
-  const [receipts, setReceipts] = useState<Receipt[]>([]);
+  const [receipts, setReceipts] = useState<HomeScreenReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +39,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState<Receipt | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<HomeScreenReceipt | null>(null);
   const [receiptViewMode, setReceiptViewMode] = useState<'items' | 'friends'>('items');
   const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
 
@@ -100,6 +75,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
 
   const PAGE_SIZE = 10;
 
+
   // Fetch detailed receipt information including items and friend amounts
   const fetchReceiptDetails = async (receiptId: string) => {
     try {
@@ -132,14 +108,21 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
       // Process items data
       const processedItems = receiptDetails?.items?.map((item: any) => {
         console.log('Processing item:', JSON.stringify(item, null, 2));
+        
+        // Get all assigned friend names and remove duplicates
+        const assignedFriendNames = item.assignments?.flatMap((assignment: any) => 
+          assignment.assignedFriends?.map((friend: any) => friend.name) || []
+        ) || [];
+        
+        // Remove duplicates using Set
+        const uniqueAssignedFriends = [...new Set(assignedFriendNames)];
+        
         return {
           id: item.id,
           name: item.name,
           price: item.price,
           quantity: item.quantity,
-          assignedFriends: item.assignments?.flatMap((assignment: any) => 
-            assignment.assignedFriends?.map((friend: any) => friend.name) || []
-          ) || [],
+          assignedFriends: uniqueAssignedFriends,
         };
       }) || [];
       console.log('Processed items:', JSON.stringify(processedItems, null, 2));
@@ -173,33 +156,18 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
         })
       );
       
-      // Update selectedReceipt if it's the same receipt
-      console.log('Checking if should update selectedReceipt...');
-      console.log('selectedReceipt exists:', !!selectedReceipt);
-      console.log('selectedReceipt.id:', selectedReceipt?.id);
-      console.log('receiptId:', receiptId);
-      console.log('IDs match:', selectedReceipt?.id === receiptId);
-      
-      if (selectedReceipt && selectedReceipt.id === receiptId) {
-        const updatedSelectedReceipt = {
-          ...selectedReceipt,
-          ...updatedReceiptData,
-        };
-        console.log('Updating selectedReceipt with:', JSON.stringify(updatedSelectedReceipt, null, 2));
-        setSelectedReceipt(updatedSelectedReceipt);
-      } else {
-        console.log('NOT updating selectedReceipt - condition not met');
-        // Force update even if IDs don't match, using the receipt from the array
-        const foundReceipt = receipts.find(r => r.id === receiptId);
-        if (foundReceipt) {
-          const forceUpdatedReceipt = {
-            ...foundReceipt,
+      // Update selectedReceipt if it's the same receipt - use setState callback to get latest state
+      setSelectedReceipt(prevSelectedReceipt => {
+        if (prevSelectedReceipt && prevSelectedReceipt.id === receiptId) {
+          const updatedSelectedReceipt = {
+            ...prevSelectedReceipt,
             ...updatedReceiptData,
           };
-          console.log('Force updating selectedReceipt with:', JSON.stringify(forceUpdatedReceipt, null, 2));
-          setSelectedReceipt(forceUpdatedReceipt);
+          console.log('Updating selectedReceipt with:', JSON.stringify(updatedSelectedReceipt, null, 2));
+          return updatedSelectedReceipt;
         }
-      }
+        return prevSelectedReceipt;
+      });
     } catch (error) {
       console.error('Failed to fetch receipt details:', error);
       Alert.alert('Error', 'Failed to load receipt details. Please try again.');
@@ -213,7 +181,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   };
 
   // Handle receipt selection
-  const handleReceiptPress = async (receipt: Receipt) => {
+  const handleReceiptPress = async (receipt: HomeScreenReceipt) => {
     setSelectedReceipt(receipt);
     setReceiptViewMode('items');
     
@@ -232,7 +200,8 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   // Load receipts from API with pagination
   const loadReceipts = async (page: number = 1, isRefresh: boolean = false, searchTerm?: string) => {
     try {
-      console.log(`Loading receipts - Page: ${page}, SearchTerm: '${searchTerm}', IsRefresh: ${isRefresh}`);
+      const actualSearchTerm = searchTerm && searchTerm.trim() ? searchTerm.trim() : undefined;
+      console.log(`Loading receipts - Page: ${page}, SearchTerm: '${actualSearchTerm}', IsRefresh: ${isRefresh}`);
       
       if (page === 1) {
         setLoading(true);
@@ -244,7 +213,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
       const response = await receiptApi.getReceiptsPaginated({
         page,
         pageSize: PAGE_SIZE,
-        searchTerm: searchTerm || undefined,
+        searchTerm: actualSearchTerm,
       });
       
       console.log('Paginated API response:', response);
@@ -279,7 +248,10 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
       if (page === 1 || isRefresh) {
         setReceipts(convertedReceipts);
       } else {
-        setReceipts(prev => [...prev, ...convertedReceipts]);
+        setReceipts(prev => {
+          const newReceipts = [...prev, ...convertedReceipts];
+          return newReceipts;
+        });
       }
 
       setPagination(paginationInfo);
@@ -351,7 +323,9 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
     if (!hasInitiallyLoaded) return;
     
     const timeoutId = setTimeout(() => {
-      loadReceipts(1, true, searchQuery);
+      // Only make API call if search query has changed meaningfully
+      const actualSearchTerm = searchQuery && searchQuery.trim() ? searchQuery.trim() : undefined;
+      loadReceipts(1, true, actualSearchTerm);
     }, 500);
 
     return () => clearTimeout(timeoutId);
@@ -360,7 +334,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
   // Since we're doing server-side filtering, we can directly use receipts
   const displayReceipts = receipts;
 
-  const renderReceipt = (receipt: Receipt) => (
+  const renderReceipt = (receipt: HomeScreenReceipt) => (
     <TouchableOpacity 
       key={receipt.id} 
       style={styles.receiptItem}
@@ -380,7 +354,25 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
         <View style={styles.participants}>
           <Text style={styles.participantsLabel}>With: </Text>
           <Text style={styles.participantNames}>
-            {receipt.participants.join(', ')}
+            {(() => {
+              // Use participants (already loaded from API in convertReceiptToHomeFormat)
+              if (receipt.participants && receipt.participants.length > 0) {
+                return receipt.participants.length > 4 
+                  ? `${receipt.participants.slice(0, 4).join(', ')}, +${receipt.participants.length - 4} more`
+                  : receipt.participants.join(', ');
+              }
+              
+              // Fall back to friendAmounts if detailed view has been loaded
+              if (receipt.friendAmounts && receipt.friendAmounts.length > 0) {
+                const friendNames = receipt.friendAmounts.map(f => f.name);
+                return friendNames.length > 4 
+                  ? `${friendNames.slice(0, 4).join(', ')}, +${friendNames.length - 4} more`
+                  : friendNames.join(', ');
+              }
+              
+              // Show solo if no friends data available
+              return 'Solo receipt';
+            })()}
           </Text>
         </View>
       </View>
@@ -565,7 +557,9 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
 
         {/* Content */}
         <View style={styles.content}>
-          {receiptViewMode === 'items' ? renderItemsReceipt() : renderFriendsSummary()}
+          <View style={styles.receiptWrapper}>
+            {receiptViewMode === 'items' ? renderItemsReceipt() : renderFriendsSummary()}
+          </View>
         </View>
       </View>
     );
@@ -866,12 +860,15 @@ const styles = StyleSheet.create({
   expandIcon: {
     marginTop: 4,
   },
+  receiptWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   // Receipt detail view styles
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    flex: 1,
     width: screenDimensions.width - 32,
     marginHorizontal: 16,
     marginTop: 12,

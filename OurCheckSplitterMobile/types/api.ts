@@ -77,6 +77,22 @@ export interface PaginatedResponseDto<T> {
   hasPreviousPage: boolean;
 }
 
+// Receipt item for detailed view
+export interface ReceiptItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  assignedFriends: string[];
+}
+
+// Friend amount for detailed view
+export interface FriendAmount {
+  id: number;
+  name: string;
+  amountToPay: number;
+}
+
 // For HomeScreen compatibility
 export interface HomeScreenReceipt {
   id: string;
@@ -86,6 +102,8 @@ export interface HomeScreenReceipt {
   userPaidAmount: number;
   type: 'paid';
   participants: string[];
+  items?: ReceiptItem[];
+  friendAmounts?: FriendAmount[];
 }
 
 export interface HomeScreenFriend {
@@ -131,6 +149,12 @@ export const convertReceiptToHomeFormat = (apiReceipt: ReceiptResponseDto): Home
     }
   };
   
+  // Debug logging
+  console.log(`Converting receipt ${apiReceipt.id}: friends =`, JSON.stringify(apiReceipt.friends, null, 2));
+  
+  const participants = (apiReceipt.friends || []).map(f => f.name);
+  console.log(`Receipt ${apiReceipt.id}: participants =`, participants);
+  
   return {
     id: apiReceipt.id.toString(),
     title: apiReceipt.name || 'Unnamed Receipt',
@@ -138,7 +162,7 @@ export const convertReceiptToHomeFormat = (apiReceipt: ReceiptResponseDto): Home
     totalAmount: apiReceipt.total,
     userPaidAmount: userPaidAmount,
     type: 'paid',
-    participants: apiReceipt.friends.map(f => f.name),
+    participants: participants,
   };
 };
 

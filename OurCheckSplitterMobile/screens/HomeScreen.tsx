@@ -22,6 +22,8 @@ import {
   convertReceiptToHomeFormat,
   HomeScreenFriend,
   HomeScreenReceipt,
+  ReceiptItem,
+  FriendAmount,
 } from '../types/api';
 
 interface FriendReceipt {
@@ -40,32 +42,6 @@ interface Friend {
   receipts: string[]; // Array of receipt names
   totalPaid: number; // Total amount this friend paid across all receipts
   detailedReceipts?: FriendReceipt[]; // Detailed receipt information
-}
-
-interface Receipt {
-  id: string;
-  title: string;
-  date: string;
-  totalAmount: number;
-  userPaidAmount: number;
-  type: 'paid';
-  participants: string[]; // friend names
-  items?: ReceiptItem[];
-  friendAmounts?: FriendAmount[];
-}
-
-interface ReceiptItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  assignedFriends: string[];
-}
-
-interface FriendAmount {
-  id: number;
-  name: string;
-  amountToPay: number;
 }
 
 interface HomeScreenProps {
@@ -146,6 +122,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
   // Calculate total paid by user
   const totalYouPaid = recentReceipts.reduce((sum, receipt) => sum + receipt.userPaidAmount, 0);
+
 
   // Fetch detailed receipt information including items and friend amounts
   const fetchReceiptDetails = async (receiptId: string) => {
@@ -366,7 +343,25 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <View style={styles.participants}>
           <Text style={styles.participantsLabel}>With: </Text>
           <Text style={styles.participantNames}>
-            {receipt.participants.join(', ')}
+            {(() => {
+              // Use participants (already loaded from API in convertReceiptToHomeFormat)
+              if (receipt.participants && receipt.participants.length > 0) {
+                return receipt.participants.length > 4 
+                  ? `${receipt.participants.slice(0, 4).join(', ')}, +${receipt.participants.length - 4} more`
+                  : receipt.participants.join(', ');
+              }
+              
+              // Fall back to friendAmounts if detailed view has been loaded
+              if (receipt.friendAmounts && receipt.friendAmounts.length > 0) {
+                const friendNames = receipt.friendAmounts.map(f => f.name);
+                return friendNames.length > 4 
+                  ? `${friendNames.slice(0, 4).join(', ')}, +${friendNames.length - 4} more`
+                  : friendNames.join(', ');
+              }
+              
+              // Show solo if no friends data available
+              return 'Solo receipt';
+            })()}
           </Text>
         </View>
       </View>
@@ -546,7 +541,9 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
 
         {/* Content */}
         <View style={styles.content}>
-          {receiptViewMode === 'items' ? renderItemsReceipt() : renderFriendsSummary()}
+          <View style={styles.receiptWrapper}>
+            {receiptViewMode === 'items' ? renderItemsReceipt() : renderFriendsSummary()}
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -1092,11 +1089,14 @@ const styles = StyleSheet.create({
   expandIcon: {
     marginTop: 4,
   },
+  receiptWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    flex: 1,
     width: screenDimensions.width - 32,
     marginHorizontal: 16,
     marginTop: 12,

@@ -636,7 +636,28 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
                 <View style={styles.friendReceiptParticipants}>
                   <Text style={styles.friendReceiptParticipantsLabel}>With: </Text>
                   <Text style={styles.friendReceiptParticipantNames}>
-                    {receipt.participants.filter(p => p !== selectedFriend.name).join(', ')}
+                    {(() => {
+                      // Try friendAmounts first (loaded after viewing receipt details)
+                      if (receipt.friendAmounts && receipt.friendAmounts.length > 0) {
+                        const friendNames = receipt.friendAmounts
+                          .map(f => f.name)
+                          .filter(name => name !== selectedFriend.name);
+                        return friendNames.length > 4 
+                          ? `${friendNames.slice(0, 4).join(', ')}, +${friendNames.length - 4} more`
+                          : friendNames.join(', ');
+                      }
+                      
+                      // Fall back to participants (from API friends)
+                      if (receipt.participants && receipt.participants.length > 0) {
+                        const otherParticipants = receipt.participants.filter(name => name !== selectedFriend.name);
+                        return otherParticipants.length > 4 
+                          ? `${otherParticipants.slice(0, 4).join(', ')}, +${otherParticipants.length - 4} more`
+                          : otherParticipants.join(', ');
+                      }
+                      
+                      // Show this if no friend data is available
+                      return 'Solo receipt';
+                    })()}
                   </Text>
                 </View>
               </View>
@@ -691,7 +712,14 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
                     <Text style={styles.itemQuantityBW}>Qty: {item.quantity}</Text>
                     {item.assignedFriends.length > 0 && (
                       <Text style={styles.assignedFriendsBW}>
-                        → {item.assignedFriends.join(', ')}
+                        → {item.assignedFriends.map((friendName, index) => (
+                          <Text 
+                            key={index}
+                            style={friendName === selectedFriend?.name ? styles.highlightedAssignedFriend : null}
+                          >
+                            {friendName}{index < item.assignedFriends.length - 1 ? ', ' : ''}
+                          </Text>
+                        ))}
                       </Text>
                     )}
                   </View>
@@ -760,7 +788,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
                       styles.friendNameBW,
                       friend.name === selectedFriend.name && styles.highlightedFriendNameBW
                     ]}>
-                      {friend.name === selectedFriend.name ? `${friend.name} (This Friend)` : friend.name}
+                      {friend.name}
                     </Text>
                     <Text style={[
                       styles.friendAmountBW,
@@ -835,7 +863,9 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
 
         {/* Content */}
         <View style={styles.content}>
-          {receiptViewMode === 'items' ? renderFriendItemsReceipt() : renderFriendsSummaryForFriend()}
+          <View style={styles.receiptWrapper}>
+            {receiptViewMode === 'items' ? renderFriendItemsReceipt() : renderFriendsSummaryForFriend()}
+          </View>
         </View>
       </View>
     );
@@ -1483,12 +1513,15 @@ const styles = StyleSheet.create({
   highlightedFriendAmount: {
     color: '#4CAF50',
   },
+  receiptWrapper: {
+    flex: 1,
+    alignItems: 'center',
+  },
   // Receipt detail view styles for FriendsScreen
   receiptContainer: {
     backgroundColor: 'white',
     paddingVertical: 20,
     paddingHorizontal: 20,
-    flex: 1,
     width: screenDimensions.width - 32,
     marginHorizontal: 16,
     marginTop: 12,
@@ -1561,6 +1594,10 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontStyle: 'italic',
   },
+  highlightedAssignedFriend: {
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
   itemPriceBW: {
     fontSize: 14,
     fontWeight: '600',
@@ -1591,7 +1628,8 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   highlightedFriendNameBW: {
-    color: '#2E7D32',
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
   friendAmountBW: {
     fontSize: 16,
@@ -1599,7 +1637,8 @@ const styles = StyleSheet.create({
     color: 'black',
   },
   highlightedFriendAmountBW: {
-    color: '#4CAF50',
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
   itemsInlineBW: {
     fontSize: 12,
@@ -1608,8 +1647,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   highlightedItemsInlineBW: {
-    color: '#2E7D32',
-    fontWeight: '500',
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
   dotRule: {
     height: 1,
