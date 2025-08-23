@@ -80,15 +80,10 @@ namespace OurCheckSplitter.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("ReceiptId")
-                        .HasColumnType("INTEGER");
-
                     b.Property<Guid>("UserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ReceiptId");
 
                     b.HasIndex("UserId");
 
@@ -114,6 +109,28 @@ namespace OurCheckSplitter.Api.Migrations
                     b.HasIndex("ItemAssignmentId");
 
                     b.ToTable("FriendAssignments");
+                });
+
+            modelBuilder.Entity("OurCheckSplitter.Api.Entities.FriendReceipt", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("FriendId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ReceiptId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReceiptId");
+
+                    b.HasIndex("FriendId", "ReceiptId")
+                        .IsUnique();
+
+                    b.ToTable("FriendReceipts");
                 });
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Item", b =>
@@ -212,17 +229,11 @@ namespace OurCheckSplitter.Api.Migrations
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Friend", b =>
                 {
-                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", "Receipt")
-                        .WithMany("Friends")
-                        .HasForeignKey("ReceiptId");
-
                     b.HasOne("OurCheckSplitter.Api.Entities.AppUser", "User")
                         .WithMany("Friends")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Receipt");
 
                     b.Navigation("User");
                 });
@@ -244,6 +255,25 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Navigation("Friend");
 
                     b.Navigation("ItemAssignment");
+                });
+
+            modelBuilder.Entity("OurCheckSplitter.Api.Entities.FriendReceipt", b =>
+                {
+                    b.HasOne("OurCheckSplitter.Api.Entities.Friend", "Friend")
+                        .WithMany("FriendReceipts")
+                        .HasForeignKey("FriendId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("OurCheckSplitter.Api.Entities.Receipt", "Receipt")
+                        .WithMany("FriendReceipts")
+                        .HasForeignKey("ReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Friend");
+
+                    b.Navigation("Receipt");
                 });
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Item", b =>
@@ -292,6 +322,11 @@ namespace OurCheckSplitter.Api.Migrations
                     b.Navigation("Receipts");
                 });
 
+            modelBuilder.Entity("OurCheckSplitter.Api.Entities.Friend", b =>
+                {
+                    b.Navigation("FriendReceipts");
+                });
+
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Item", b =>
                 {
                     b.Navigation("Assignments");
@@ -304,7 +339,7 @@ namespace OurCheckSplitter.Api.Migrations
 
             modelBuilder.Entity("OurCheckSplitter.Api.Entities.Receipt", b =>
                 {
-                    b.Navigation("Friends");
+                    b.Navigation("FriendReceipts");
 
                     b.Navigation("Items");
                 });
