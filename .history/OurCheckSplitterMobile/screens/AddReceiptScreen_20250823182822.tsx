@@ -588,14 +588,14 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
               await api.receipts.assignFriendsToWholeItem({
                 receiptId: receiptId,
                 itemId: item.apiItemId,
-                friendNames: assignedFriendsNames.filter((name): name is string => name !== undefined),
+                friendNames: assignedFriendsNames,
               });
               console.log(`Successfully assigned friends to whole item: ${item.name}`);
             } else {
               // Use assign-friends-to-items API for sub-items
               const itemAssignments = [{
                 itemId: item.apiItemId,
-                friendNames: assignedFriendsNames.filter((name): name is string => name !== undefined),
+                friendNames: assignedFriendsNames,
               }];
               
               console.log(`Assignment data for sub-items:`, { receiptId, itemAssignments });

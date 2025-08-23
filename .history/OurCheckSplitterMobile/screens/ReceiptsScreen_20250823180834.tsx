@@ -303,25 +303,7 @@ const ReceiptsScreen = ({ navigation }: ReceiptsScreenProps) => {
           console.log('Fallback API response:', fallbackResponse);
           
           if (Array.isArray(fallbackResponse)) {
-            // Fetch friends for each receipt in fallback
-            const convertedReceipts = await Promise.all(
-              fallbackResponse.map(async (receipt: ReceiptResponseDto) => {
-                try {
-                  const receiptFriends = await api.receipts.getReceiptFriends(receipt.id);
-                  console.log(`Fallback: Fetched friends for receipt ${receipt.id}:`, receiptFriends);
-                  
-                  const receiptWithFriends = {
-                    ...receipt,
-                    friends: receiptFriends
-                  };
-                  
-                  return convertReceiptToHomeFormat(receiptWithFriends);
-                } catch (error) {
-                  console.error(`Fallback: Failed to fetch friends for receipt ${receipt.id}:`, error);
-                  return convertReceiptToHomeFormat(receipt);
-                }
-              })
-            );
+            const convertedReceipts = fallbackResponse.map(convertReceiptToHomeFormat);
             setReceipts(convertedReceipts);
             setPagination({
               currentPage: 1,

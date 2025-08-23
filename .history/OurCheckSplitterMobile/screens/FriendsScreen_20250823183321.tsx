@@ -346,22 +346,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           console.log('Fallback friends API response:', fallbackResponse);
           
           if (Array.isArray(fallbackResponse)) {
-            // For fallback, use a simpler mapping without fetching receipt friends
-            const mappedFriends = fallbackResponse.map((friend: any) => ({
-              id: friend.id.toString(),
-              name: friend.name,
-              avatar: generateAvatar(friend.name),
-              receipts: friend.receipts?.map((r: any) => r.name || r.title) || [],
-              totalPaid: friend.receipts?.reduce((sum: number, r: any) => sum + (r.total || 0), 0) || 0,
-              detailedReceipts: friend.receipts?.map((r: any) => ({
-                id: r.id?.toString() || '',
-                title: r.name || '',
-                date: 'Recently added',
-                totalAmount: r.total || 0,
-                friendPaidAmount: 0,
-                participants: []
-              })) || []
-            }));
+            const mappedFriends = await Promise.all(fallbackResponse.map(mapFriendData));
             
             setFriends(mappedFriends);
             setPagination({

@@ -24,9 +24,11 @@ namespace OurCheckSplitter.Api.Controllers
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
-        // Helper method to update the many-to-many relationship between friends and receipts
+                // Helper method to update the many-to-many relationship between friends and receipts
         private async Task UpdateFriendReceiptRelationships(int receiptId)
         {
+            Console.WriteLine($"UpdateFriendReceiptRelationships called for receipt {receiptId}");
+            
             // Get all friends that are assigned to items in this receipt
             var friendsFromItems = await _context.FriendAssignments
                 .Where(fa => fa.ItemAssignment.ReceiptId == receiptId)
@@ -34,20 +36,28 @@ namespace OurCheckSplitter.Api.Controllers
                 .Distinct()
                 .ToListAsync();
 
+            Console.WriteLine($"Found {friendsFromItems.Count} friends assigned to items in receipt {receiptId}: {string.Join(", ", friendsFromItems)}");
+
             // Get existing FriendReceipt relationships to preserve direct assignments
             var existingFriendReceipts = await _context.FriendReceipts
                 .Where(fr => fr.ReceiptId == receiptId)
                 .ToListAsync();
 
             var existingFriendIds = existingFriendReceipts.Select(fr => fr.FriendId).Distinct().ToList();
+            Console.WriteLine($"Found {existingFriendIds.Count} existing direct friend assignments: {string.Join(", ", existingFriendIds)}");
+
+            // Combine friends from items and existing direct assignments
+            var allFriendsInReceipt = friendsFromItems.Union(existingFriendIds).Distinct().ToList();
+            Console.WriteLine($"Total friends to maintain: {allFriendsInReceipt.Count}");
 
             // Remove only the FriendReceipt relationships for friends that are no longer assigned to items
             var friendsToRemove = existingFriendIds.Except(friendsFromItems).ToList();
             var friendReceiptsToRemove = existingFriendReceipts.Where(fr => friendsToRemove.Contains(fr.FriendId)).ToList();
-
+            
             if (friendReceiptsToRemove.Any())
             {
                 _context.FriendReceipts.RemoveRange(friendReceiptsToRemove);
+                Console.WriteLine($"Removed {friendReceiptsToRemove.Count} FriendReceipt relationships for friends no longer assigned to items");
             }
 
             // Add new FriendReceipt relationships for friends assigned to items that don't already exist
@@ -60,6 +70,7 @@ namespace OurCheckSplitter.Api.Controllers
                     ReceiptId = receiptId
                 };
                 _context.FriendReceipts.Add(friendReceipt);
+                Console.WriteLine($"Added FriendReceipt relationship: FriendId={friendId}, ReceiptId={receiptId}");
             }
         }
 

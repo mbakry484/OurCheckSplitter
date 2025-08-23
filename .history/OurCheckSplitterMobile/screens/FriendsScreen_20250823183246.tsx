@@ -311,11 +311,11 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
 
       if (response && Array.isArray(response)) {
         // Direct array format (fallback or old API response)
-        mappedFriends = await Promise.all(response.map(mapFriendData));
+        mappedFriends = response.map(mapFriendData);
         paginationInfo.totalCount = response.length;
       } else if (response && response.items && Array.isArray(response.items)) {
         // Paginated format
-        mappedFriends = await Promise.all(response.items.map(mapFriendData));
+        mappedFriends = response.items.map(mapFriendData);
         paginationInfo = {
           currentPage: response.currentPage,
           totalPages: response.totalPages,
@@ -346,7 +346,6 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           console.log('Fallback friends API response:', fallbackResponse);
           
           if (Array.isArray(fallbackResponse)) {
-            // For fallback, use a simpler mapping without fetching receipt friends
             const mappedFriends = fallbackResponse.map((friend: any) => ({
               id: friend.id.toString(),
               name: friend.name,
@@ -1588,7 +1587,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
-
+  // Items section styles
+  itemsSection: {
+    marginBottom: 20,
+  },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -346,7 +346,6 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           console.log('Fallback friends API response:', fallbackResponse);
           
           if (Array.isArray(fallbackResponse)) {
-            // For fallback, use a simpler mapping without fetching receipt friends
             const mappedFriends = fallbackResponse.map((friend: any) => ({
               id: friend.id.toString(),
               name: friend.name,
@@ -1588,7 +1587,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 8,
   },
-
+  // Items section styles
+  itemsSection: {
+    marginBottom: 20,
+  },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

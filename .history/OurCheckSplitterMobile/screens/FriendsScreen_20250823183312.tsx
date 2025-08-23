@@ -346,7 +346,6 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           console.log('Fallback friends API response:', fallbackResponse);
           
           if (Array.isArray(fallbackResponse)) {
-            // For fallback, use a simpler mapping without fetching receipt friends
             const mappedFriends = fallbackResponse.map((friend: any) => ({
               id: friend.id.toString(),
               name: friend.name,

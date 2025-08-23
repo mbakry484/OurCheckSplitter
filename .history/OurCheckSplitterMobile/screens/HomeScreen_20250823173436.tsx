@@ -122,27 +122,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         convertFriendToHomeFormat(friend)
       );
       
-      // Convert receipts and fetch friends for each receipt
-      const convertedReceipts = await Promise.all(
-        receiptsResponse.map(async (receipt: ReceiptResponseDto) => {
-          try {
-            // Fetch friends for this specific receipt
-            const receiptFriends = await api.receipts.getReceiptFriends(receipt.id);
-            console.log(`Fetched friends for receipt ${receipt.id}:`, receiptFriends);
-            
-            // Create a modified receipt object with the fetched friends
-            const receiptWithFriends = {
-              ...receipt,
-              friends: receiptFriends
-            };
-            
-            return convertReceiptToHomeFormat(receiptWithFriends);
-          } catch (error) {
-            console.error(`Failed to fetch friends for receipt ${receipt.id}:`, error);
-            // Return receipt without friends if API call fails
-            return convertReceiptToHomeFormat(receipt);
-          }
-        })
+      const convertedReceipts = receiptsResponse.map((receipt: ReceiptResponseDto) => 
+        convertReceiptToHomeFormat(receipt)
       );
 
       setFriends(convertedFriends);

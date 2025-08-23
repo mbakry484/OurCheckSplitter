@@ -24,7 +24,7 @@ namespace OurCheckSplitter.Api.Controllers
             _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
         }
 
-        // Helper method to update the many-to-many relationship between friends and receipts
+                // Helper method to update the many-to-many relationship between friends and receipts
         private async Task UpdateFriendReceiptRelationships(int receiptId)
         {
             // Get all friends that are assigned to items in this receipt
@@ -44,7 +44,7 @@ namespace OurCheckSplitter.Api.Controllers
             // Remove only the FriendReceipt relationships for friends that are no longer assigned to items
             var friendsToRemove = existingFriendIds.Except(friendsFromItems).ToList();
             var friendReceiptsToRemove = existingFriendReceipts.Where(fr => friendsToRemove.Contains(fr.FriendId)).ToList();
-
+            
             if (friendReceiptsToRemove.Any())
             {
                 _context.FriendReceipts.RemoveRange(friendReceiptsToRemove);
