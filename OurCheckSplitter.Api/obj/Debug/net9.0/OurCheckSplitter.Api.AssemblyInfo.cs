@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("OurCheckSplitter.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+880e85cd8ca6663194424435a50bec9c5220bce1")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8541c4e2b9e349e0945fa244165c0960cc38a891")]
 [assembly: System.Reflection.AssemblyProductAttribute("OurCheckSplitter.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OurCheckSplitter.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
