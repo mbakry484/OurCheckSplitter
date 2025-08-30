@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Initialize Firebase Admin SDK
 var firebaseCredentialsPath = builder.Configuration["Firebase:CredentialsPath"];
 
-//1
+
 if (FirebaseApp.DefaultInstance == null)
 {
     FirebaseApp.Create(new AppOptions
