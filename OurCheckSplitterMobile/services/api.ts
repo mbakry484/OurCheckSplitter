@@ -265,6 +265,16 @@ export const friendsApi = {
       method: 'DELETE',
     });
   },
+  
+  // Get current user's total paid amount
+  getCurrentUserTotalPaid: async () => {
+    return apiCall('/Friends/me/total-paid');
+  },
+  
+  // Get amounts a specific friend paid for each of their receipts
+  getFriendReceiptAmounts: async (friendId: number) => {
+    return apiCall(`/Friends/${friendId}/receipt-amounts`);
+  },
 };
 
 // Test API calls

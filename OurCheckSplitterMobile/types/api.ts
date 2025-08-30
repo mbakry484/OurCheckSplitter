@@ -32,6 +32,7 @@ export interface ReceiptResponseDto {
   createdDate: string;
   friends: FriendResponseDto[];
   items: ItemResponseDto[];
+  userPaidAmount: number;
 }
 
 export interface ReceiptSummaryDto {
@@ -44,6 +45,7 @@ export interface FriendDto {
   id: number;
   name: string;
   receipts: ReceiptSummaryDto[];
+  totalPaidAmount: number;
 }
 
 // Request DTOs
@@ -116,16 +118,8 @@ export interface HomeScreenFriend {
 
 // Utility function to convert API response to HomeScreen format
 export const convertReceiptToHomeFormat = (apiReceipt: ReceiptResponseDto): HomeScreenReceipt => {
-  // Calculate user's paid amount based on assignments
-  // For now, we'll use a simple approximation - if there are items and assignments, 
-  // calculate based on assignments, otherwise assume user paid the full amount
-  let userPaidAmount = apiReceipt.total;
-  
-  if (apiReceipt.items && apiReceipt.items.length > 0) {
-    // Sum up all assignments that don't include the current user (we don't have user context here)
-    // For simplicity, we'll show the total for now
-    userPaidAmount = apiReceipt.total;
-  }
+  // Use the calculated user paid amount from the API (includes tax, tips, and proper item assignments)
+  let userPaidAmount = apiReceipt.userPaidAmount || apiReceipt.total;
   
   // Format the date to be user-friendly
   const formatDate = (dateString: string): string => {
@@ -179,6 +173,6 @@ export const convertFriendToHomeFormat = (apiFriend: FriendDto): HomeScreenFrien
     name: apiFriend.name,
     avatar: avatar,
     receipts: apiFriend.receipts.map(r => r.name),
-    totalPaid: apiFriend.receipts.reduce((sum, receipt) => sum + receipt.total, 0),
+    totalPaid: apiFriend.totalPaidAmount || apiFriend.receipts.reduce((sum, receipt) => sum + receipt.total, 0),
   };
 };

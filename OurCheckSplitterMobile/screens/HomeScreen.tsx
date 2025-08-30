@@ -56,6 +56,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
   // API state management
   const [friends, setFriends] = useState<HomeScreenFriend[]>([]);
   const [recentReceipts, setRecentReceipts] = useState<HomeScreenReceipt[]>([]);
+  const [userTotalPaid, setUserTotalPaid] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -113,13 +114,14 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         // Continue anyway, maybe it's just the test endpoint
       }
 
-      // Load friends and receipts in parallel
-      const [friendsResponse, receiptsResponse] = await Promise.all([
+      // Load friends, receipts, and user's total paid amount in parallel
+      const [friendsResponse, receiptsResponse, userTotalResponse] = await Promise.all([
         api.friends.getFriends(),
         api.receipts.getReceiptsPaginated({
           page: 1,
           pageSize: 10, // Load only 10 receipts
         }),
+        api.friends.getCurrentUserTotalPaid(),
       ]);
 
       // Convert API responses to HomeScreen format
@@ -157,6 +159,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
       if (page === 1 || isRefresh) {
         setFriends(convertedFriends);
         setRecentReceipts(convertedReceipts);
+        setUserTotalPaid(userTotalResponse?.totalPaidAmount || 0);
       } else {
         setRecentReceipts(prev => [...prev, ...convertedReceipts]);
       }
@@ -176,8 +179,8 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
     }
   };
 
-  // Calculate total paid by user
-  const totalYouPaid = recentReceipts.reduce((sum, receipt) => sum + receipt.userPaidAmount, 0);
+  // Use the calculated total paid amount from the API
+  // (userTotalPaid is now fetched from the API instead of calculated here)
 
 
 
@@ -698,7 +701,7 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         <View style={[styles.totalsSection, { marginBottom: 20 + Math.max(insets.bottom, 0) }]}>
           <View style={styles.totalItem}>
             <Text style={styles.totalLabel}>Total You Paid</Text>
-            <Text style={styles.totalAmountOwe}>${totalYouPaid.toFixed(2)}</Text>
+            <Text style={styles.totalAmountOwe}>${userTotalPaid.toFixed(2)}</Text>
           </View>
 
         </View>

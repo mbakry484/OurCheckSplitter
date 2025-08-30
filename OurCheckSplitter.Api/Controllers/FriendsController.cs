@@ -108,12 +108,21 @@ namespace OurCheckSplitter.Api.Controllers
                             Name = r.Name,
                             Total = r.Total
                         }).ToListAsync();
+
+                    // Calculate the total amount this friend actually paid across all receipts
+                    decimal totalPaidAmount = 0;
+                    foreach (var receipt in receipts)
+                    {
+                        var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, nonPagedCurrentUserFriend.Id);
+                        totalPaidAmount += friendAmount;
+                    }
                     
                     allFriendDtos.Add(new FriendDto
                     {
                         Id = nonPagedCurrentUserFriend.Id,
-                        Name = $"{nonPagedCurrentUserFriend.Name} (You)",
-                        Receipts = receipts
+                        Name = nonPagedCurrentUserFriend.Name ?? string.Empty,
+                        Receipts = receipts,
+                        TotalPaidAmount = totalPaidAmount
                     });
                     
                     // Remove current user from the list to avoid duplication
@@ -132,11 +141,21 @@ namespace OurCheckSplitter.Api.Controllers
                             Name = r.Name,
                             Total = r.Total
                         }).ToListAsync();
+
+                    // Calculate the total amount this friend actually paid across all receipts
+                    decimal totalPaidAmount = 0;
+                    foreach (var receipt in receipts)
+                    {
+                        var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friend.Id);
+                        totalPaidAmount += friendAmount;
+                    }
+
                     allFriendDtos.Add(new FriendDto
                     {
                         Id = friend.Id,
                         Name = friend.Name ?? string.Empty,
-                        Receipts = receipts
+                        Receipts = receipts,
+                        TotalPaidAmount = totalPaidAmount
                     });
                 }
                 return Ok(allFriendDtos);
@@ -208,17 +227,21 @@ namespace OurCheckSplitter.Api.Controllers
                         Name = r.Name,
                         Total = r.Total
                     }).ToListAsync();
-                
-                // Add (You) label if this is the current user
-                var displayName = (friend.Name != null && friend.Name.ToLower() == currentUserName.ToLower()) 
-                    ? $"{friend.Name} (You)" 
-                    : friend.Name ?? string.Empty;
+
+                // Calculate the total amount this friend actually paid across all receipts
+                decimal totalPaidAmount = 0;
+                foreach (var receipt in receipts)
+                {
+                    var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friend.Id);
+                    totalPaidAmount += friendAmount;
+                }
                 
                 friendDtos.Add(new FriendDto
                 {
                     Id = friend.Id,
-                    Name = displayName,
-                    Receipts = receipts
+                    Name = friend.Name ?? string.Empty,
+                    Receipts = receipts,
+                    TotalPaidAmount = totalPaidAmount
                 });
             }
 
@@ -254,7 +277,20 @@ namespace OurCheckSplitter.Api.Controllers
                     Name = r.Name,
                     Total = r.Total
                 }).ToListAsync();
-            var dto = new FriendDto { Name = friend.Name ?? string.Empty, Receipts = receipts };
+
+            // Calculate the total amount this friend actually paid across all receipts
+            decimal totalPaidAmount = 0;
+            foreach (var receipt in receipts)
+            {
+                var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friend.Id);
+                totalPaidAmount += friendAmount;
+            }
+
+            var dto = new FriendDto { 
+                Name = friend.Name ?? string.Empty, 
+                Receipts = receipts,
+                TotalPaidAmount = totalPaidAmount
+            };
             return Ok(dto);
         }
 
@@ -298,6 +334,195 @@ namespace OurCheckSplitter.Api.Controllers
             if (user == null)
                 return Unauthorized();
             return Ok(new { user.Id, user.Email, user.DisplayName, user.ProfilePictureUrl });
+        }
+
+        [HttpGet("me/total-paid")]
+        [SwaggerOperation(Summary = "Get the total amount the current user has paid across all receipts.",
+            Description = "Calculates the actual amount based on item assignments, taxes, and tips.")]
+        [SwaggerResponse(200, "Returns the total amount paid by the current user.")]
+        [SwaggerResponse(401, "Unauthorized - missing or invalid token.")]
+        public async Task<IActionResult> GetCurrentUserTotalPaid()
+        {
+            var user = HttpContext.Items["User"] as AppUser;
+            if (user == null)
+                return Unauthorized();
+
+            // Extract user's name from DisplayName or Email
+            var currentUserName = (user.DisplayName != null && user.DisplayName != "User") 
+                ? user.DisplayName.Split('@')[0] 
+                : user.Email.Split('@')[0];
+
+            // Find the current user's friend entry
+            var currentUserFriend = await _context.Friends
+                .FirstOrDefaultAsync(f => f.UserId == user.Id && f.Name != null && f.Name.ToLower() == currentUserName.ToLower());
+
+            decimal totalPaidAmount = 0;
+
+            if (currentUserFriend != null)
+            {
+                // Find all receipts where this user is assigned to any item assignment
+                var receipts = await _context.Receipts
+                    .Where(r => r.UserId == user.Id && r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == currentUserFriend.Id))))
+                    .Select(r => new { r.Id })
+                    .ToListAsync();
+
+                // Calculate the total amount this user actually paid across all receipts
+                foreach (var receipt in receipts)
+                {
+                    var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, currentUserFriend.Id);
+                    totalPaidAmount += friendAmount;
+                }
+            }
+
+            return Ok(new { TotalPaidAmount = totalPaidAmount });
+        }
+
+        [HttpGet("{friendId}/receipt-amounts")]
+        [SwaggerOperation(Summary = "Get the amount a specific friend paid for each of their receipts.",
+            Description = "Returns a list of receipts with the calculated amount the friend should pay for each.")]
+        [SwaggerResponse(200, "Returns the friend's receipts with their calculated amounts.")]
+        [SwaggerResponse(401, "Unauthorized - missing or invalid token.")]
+        [SwaggerResponse(404, "Friend not found.")]
+        public async Task<IActionResult> GetFriendReceiptAmounts(int friendId)
+        {
+            var user = HttpContext.Items["User"] as AppUser;
+            if (user == null)
+                return Unauthorized();
+
+            // Find the friend
+            var friend = await _context.Friends
+                .FirstOrDefaultAsync(f => f.Id == friendId && f.UserId == user.Id);
+
+            if (friend == null)
+                return NotFound("Friend not found");
+
+            // Find all receipts where this friend is assigned to any item assignment
+            var receipts = await _context.Receipts
+                .Where(r => r.UserId == user.Id && r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == friendId))))
+                .Select(r => new { r.Id, r.Name, r.Total, r.CreatedDate })
+                .ToListAsync();
+
+            var receiptAmounts = new List<object>();
+
+            // Calculate the amount for each receipt
+            foreach (var receipt in receipts)
+            {
+                var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friendId);
+                
+                receiptAmounts.Add(new
+                {
+                    ReceiptId = receipt.Id,
+                    ReceiptName = receipt.Name,
+                    ReceiptTotal = receipt.Total,
+                    FriendPaidAmount = friendAmount,
+                    CreatedDate = receipt.CreatedDate
+                });
+            }
+
+            return Ok(receiptAmounts);
+        }
+
+        /// <summary>
+        /// Helper method to calculate the amount a specific friend should pay for a specific receipt
+        /// </summary>
+        private async Task<decimal> CalculateFriendAmountForReceipt(int receiptId, int friendId)
+        {
+            try
+            {
+                var receipt = await _context.Receipts
+                    .Include(r => r.FriendReceipts)
+                    .ThenInclude(fr => fr.Friend)
+                    .Include(r => r.Items)
+                        .ThenInclude(i => i.Assignments)
+                            .ThenInclude(a => a.FriendAssignments)
+                                .ThenInclude(fa => fa.Friend)
+                    .FirstOrDefaultAsync(r => r.Id == receiptId);
+
+                if (receipt == null)
+                    return 0;
+
+                // Check if this friend is assigned to any items in this receipt
+                var isAssignedToAnyItem = receipt.Items
+                    .Any(item => item.Assignments
+                        .Any(assignment => assignment.FriendAssignments
+                            .Any(fa => fa.FriendId == friendId)));
+
+                if (!isAssignedToAnyItem)
+                    return 0;
+
+                var friendAmounts = new Dictionary<int, decimal>();
+                var friendNames = new Dictionary<int, string>();
+
+                // Calculate each friend's item amounts
+                foreach (var item in receipt.Items)
+                {
+                    foreach (var assignment in item.Assignments)
+                    {
+                        var assignedFriends = assignment.FriendAssignments.Select(fa => fa.Friend).ToList();
+                        foreach (var friend in assignedFriends)
+                        {
+                            if (!friendAmounts.ContainsKey(friend.Id))
+                            {
+                                friendAmounts[friend.Id] = 0;
+                                friendNames[friend.Id] = friend.Name ?? string.Empty;
+                            }
+                            friendAmounts[friend.Id] += assignment.Price;
+                        }
+                    }
+                }
+
+                // If the friend is not in the calculation, return 0
+                if (!friendAmounts.ContainsKey(friendId))
+                    return 0;
+
+                // Calculate tax percentage to apply to each friend
+                double taxPercentage = 0;
+                decimal totalItemAmount = friendAmounts.Values.Sum();
+                decimal totalTips = (decimal)receipt.Tips;
+                var friendCount = receipt.FriendReceipts?.Count ?? 0;
+                bool tipsIncluded = receipt.TipsIncludedInTotal;
+                decimal subtotal;
+                
+                if (tipsIncluded)
+                {
+                    subtotal = (decimal)receipt.Total - (decimal)receipt.Tax - totalTips;
+                }
+                else
+                {
+                    subtotal = (decimal)receipt.Total - (decimal)receipt.Tax;
+                }
+
+                if (receipt.TaxType == "percentage")
+                {
+                    taxPercentage = receipt.Tax;
+                }
+                else
+                {
+                    if (subtotal > 0)
+                    {
+                        taxPercentage = ((double)receipt.Tax / (double)subtotal) * 100.0;
+                    }
+                }
+
+                // Apply tax to this friend's amount
+                var itemAmount = friendAmounts[friendId];
+                var taxAmount = itemAmount * (decimal)(taxPercentage / 100.0);
+                var friendAmountWithTax = itemAmount + taxAmount;
+
+                // Add tips if friend is part of the receipt
+                if (friendCount > 0)
+                {
+                    var tipsPerFriend = totalTips / friendCount;
+                    friendAmountWithTax += tipsPerFriend;
+                }
+
+                return Math.Round(friendAmountWithTax, 2);
+            }
+            catch
+            {
+                // If any error occurs, return 0
+                return 0;
+            }
         }
     }
 }

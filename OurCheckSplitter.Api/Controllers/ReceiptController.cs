@@ -136,6 +136,9 @@ namespace OurCheckSplitter.Api.Controllers
 
                 foreach (var receipt in allReceipts)
                 {
+                    // Calculate the current user's paid amount for this receipt
+                    var userPaidAmount = await CalculateCurrentUserAmountForReceipt(receipt.Id, user);
+
                     var receiptDto = new ReceiptResponseDto
                     {
                         Id = receipt.Id,
@@ -146,6 +149,7 @@ namespace OurCheckSplitter.Api.Controllers
                         Total = receipt.Total,
                         TipsIncludedInTotal = receipt.TipsIncludedInTotal,
                         CreatedDate = receipt.CreatedDate,
+                        UserPaidAmount = userPaidAmount,
                         Friends = receipt.FriendReceipts?.Select(fr => new FriendResponseDto
                         {
                             Id = fr.Friend.Id,
@@ -216,6 +220,9 @@ namespace OurCheckSplitter.Api.Controllers
 
             foreach (var receipt in receipts)
             {
+                // Calculate the current user's paid amount for this receipt
+                var userPaidAmount = await CalculateCurrentUserAmountForReceipt(receipt.Id, user);
+
                 var receiptDto = new ReceiptResponseDto
                 {
                     Id = receipt.Id,
@@ -226,6 +233,7 @@ namespace OurCheckSplitter.Api.Controllers
                     Total = receipt.Total,
                     TipsIncludedInTotal = receipt.TipsIncludedInTotal,
                     CreatedDate = receipt.CreatedDate,
+                    UserPaidAmount = userPaidAmount,
                     Friends = receipt.FriendReceipts?.Select(fr => new FriendResponseDto
                     {
                         Id = fr.Friend.Id,
@@ -292,6 +300,9 @@ namespace OurCheckSplitter.Api.Controllers
             if (receipt == null)
                 return NotFound("Receipt not found");
 
+            // Calculate the current user's paid amount for this receipt
+            var userPaidAmount = await CalculateCurrentUserAmountForReceipt(receipt.Id, user);
+
             var receiptDto = new ReceiptResponseDto
             {
                 Id = receipt.Id,
@@ -302,6 +313,7 @@ namespace OurCheckSplitter.Api.Controllers
                 Total = receipt.Total,
                 TipsIncludedInTotal = receipt.TipsIncludedInTotal,
                 CreatedDate = receipt.CreatedDate,
+                UserPaidAmount = userPaidAmount,
                 Friends = receipt.FriendReceipts.Select(fr => new FriendResponseDto
                 {
                     Id = fr.Friend.Id,
@@ -950,9 +962,119 @@ namespace OurCheckSplitter.Api.Controllers
             return Ok(receiptDto);
         }
 
+        /// <summary>
+        /// Helper method to calculate the amount the current user should pay for a specific receipt
+        /// </summary>
+        private async Task<decimal> CalculateCurrentUserAmountForReceipt(int receiptId, AppUser user)
+        {
+            try
+            {
+                // Extract user's name from DisplayName or Email
+                var currentUserName = (user.DisplayName != null && user.DisplayName != "User") 
+                    ? user.DisplayName.Split('@')[0] 
+                    : user.Email.Split('@')[0];
 
+                // Find the current user's friend entry
+                var currentUserFriend = await _context.Friends
+                    .FirstOrDefaultAsync(f => f.UserId == user.Id && f.Name != null && f.Name.ToLower() == currentUserName.ToLower());
 
+                if (currentUserFriend == null)
+                    return 0;
 
+                var receipt = await _context.Receipts
+                    .Include(r => r.FriendReceipts)
+                    .ThenInclude(fr => fr.Friend)
+                    .Include(r => r.Items)
+                        .ThenInclude(i => i.Assignments)
+                            .ThenInclude(a => a.FriendAssignments)
+                                .ThenInclude(fa => fa.Friend)
+                    .FirstOrDefaultAsync(r => r.Id == receiptId);
 
+                if (receipt == null)
+                    return 0;
+
+                // Check if this user is assigned to any items in this receipt
+                var isAssignedToAnyItem = receipt.Items
+                    .Any(item => item.Assignments
+                        .Any(assignment => assignment.FriendAssignments
+                            .Any(fa => fa.FriendId == currentUserFriend.Id)));
+
+                if (!isAssignedToAnyItem)
+                    return 0;
+
+                var friendAmounts = new Dictionary<int, decimal>();
+                var friendNames = new Dictionary<int, string>();
+
+                // Calculate each friend's item amounts
+                foreach (var item in receipt.Items)
+                {
+                    foreach (var assignment in item.Assignments)
+                    {
+                        var assignedFriends = assignment.FriendAssignments.Select(fa => fa.Friend).ToList();
+                        foreach (var friend in assignedFriends)
+                        {
+                            if (!friendAmounts.ContainsKey(friend.Id))
+                            {
+                                friendAmounts[friend.Id] = 0;
+                                friendNames[friend.Id] = friend.Name ?? string.Empty;
+                            }
+                            friendAmounts[friend.Id] += assignment.Price;
+                        }
+                    }
+                }
+
+                // If the user is not in the calculation, return 0
+                if (!friendAmounts.ContainsKey(currentUserFriend.Id))
+                    return 0;
+
+                // Calculate tax percentage to apply to each friend
+                double taxPercentage = 0;
+                decimal totalItemAmount = friendAmounts.Values.Sum();
+                decimal totalTips = (decimal)receipt.Tips;
+                var friendCount = receipt.FriendReceipts?.Count ?? 0;
+                bool tipsIncluded = receipt.TipsIncludedInTotal;
+                decimal subtotal;
+                
+                if (tipsIncluded)
+                {
+                    subtotal = (decimal)receipt.Total - (decimal)receipt.Tax - totalTips;
+                }
+                else
+                {
+                    subtotal = (decimal)receipt.Total - (decimal)receipt.Tax;
+                }
+
+                if (receipt.TaxType == "percentage")
+                {
+                    taxPercentage = receipt.Tax;
+                }
+                else
+                {
+                    if (subtotal > 0)
+                    {
+                        taxPercentage = ((double)receipt.Tax / (double)subtotal) * 100.0;
+                    }
+                }
+
+                // Apply tax to this user's amount
+                var itemAmount = friendAmounts[currentUserFriend.Id];
+                var taxAmount = itemAmount * (decimal)(taxPercentage / 100.0);
+                var userAmountWithTax = itemAmount + taxAmount;
+
+                // Add tips if user is part of the receipt
+                if (friendCount > 0)
+                {
+                    var tipsPerFriend = totalTips / friendCount;
+                    userAmountWithTax += tipsPerFriend;
+                }
+
+                return Math.Round(userAmountWithTax, 2);
+            }
+            catch
+            {
+                // If any error occurs, return 0
+                return 0;
+            }
+        }
     }
 }

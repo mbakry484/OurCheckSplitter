@@ -155,7 +155,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           name: friend.name,
           avatar: generateAvatar(friend.name),
           receipts: friend.receipts?.map((r: any) => r.name || r.title) || [],
-          totalPaid: friend.receipts?.reduce((sum: number, r: any) => sum + (r.total || 0), 0) || 0,
+          totalPaid: friend.totalPaidAmount || 0,
           detailedReceipts: [] // Will be loaded when friend is clicked
         };
       };
@@ -203,7 +203,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
               name: friend.name,
               avatar: generateAvatar(friend.name),
               receipts: friend.receipts?.map((r: any) => r.name || r.title) || [],
-              totalPaid: friend.receipts?.reduce((sum: number, r: any) => sum + (r.total || 0), 0) || 0,
+              totalPaid: friend.totalPaidAmount || 0,
               detailedReceipts: []
             }));
             
@@ -268,6 +268,15 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
       const pageReceipts = friendDetails.receipts.slice(startIndex, endIndex);
 
       // Load detailed receipt information with friends for each receipt on this page
+      // First, get the friend's actual amounts for all their receipts
+      let friendReceiptAmounts: any[] = [];
+      try {
+        friendReceiptAmounts = await api.friends.getFriendReceiptAmounts(parseInt(friendId));
+        console.log(`Got friend receipt amounts for friend ${friendId}:`, friendReceiptAmounts);
+      } catch (error) {
+        console.error(`Failed to fetch friend receipt amounts for friend ${friendId}:`, error);
+      }
+
       const detailedReceipts = await Promise.all(
         pageReceipts.map(async (r: any) => {
           try {
@@ -275,12 +284,17 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
             const receiptFriends = await api.receipts.getReceiptFriends(parseInt(r.id));
             const participantNames = receiptFriends.map((f: any) => f.name);
             
+            // Find the friend's actual paid amount for this receipt
+            const friendReceiptAmount = friendReceiptAmounts.find(fra => fra.receiptId === parseInt(r.id));
+            const friendPaidAmount = friendReceiptAmount ? friendReceiptAmount.friendPaidAmount : 0;
+            
             return {
               id: r.id?.toString() || '',
               title: r.name || r.title || 'Unknown Receipt',
               date: 'Today', // You can format this based on actual date
               totalAmount: r.total || 0,
-              userPaidAmount: r.total || 0, // Assuming friend paid the total
+              friendPaidAmount: friendPaidAmount,
+              userPaidAmount: friendPaidAmount, // Use the friend's actual amount instead of total
               participants: participantNames
             };
           } catch (error) {
@@ -290,7 +304,8 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
               title: r.name || r.title || 'Unknown Receipt',
               date: 'Today',
               totalAmount: r.total || 0,
-              userPaidAmount: r.total || 0,
+              friendPaidAmount: 0,
+              userPaidAmount: 0, // Use 0 if we can't calculate
               participants: []
             };
           }
@@ -712,105 +727,47 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     },
   ];
 
-  // Extract username and filter out the current user from the friends list so they don't appear twice
+  // Extract username to identify current user
   const userName = user 
     ? (user.displayName && user.displayName !== 'User') 
       ? user.displayName.split('@')[0] 
       : user.email.split('@')[0]
     : '';
-  const displayFriends = friends.filter(friend => friend.name !== userName);
+  
+  // Don't filter out the current user anymore - the API handles the ordering
+  const displayFriends = friends;
 
-  const renderCurrentUser = () => {
-    if (!user) return null;
+
+  const renderFriend = (friend: Friend) => {
+    const isCurrentUser = friend.name === userName;
+    const cardStyle = isCurrentUser ? styles.currentUserCard : styles.friendCard;
     
-    // Find the current user in the friends list
-    const currentUserFriend = friends.find(friend => friend.name === userName);
-    
-    const handleCurrentUserPress = () => {
-      if (currentUserFriend) {
-        // If user exists in friends list, show their receipts
-        handleFriendPress(currentUserFriend);
-      } else {
-        // If user doesn't exist yet, show a message or create a placeholder
-        console.log('User not found in friends list yet');
-      }
-    };
-    
-    if (!currentUserFriend) {
-      // If user is not found in friends list, show with basic info but still clickable
-      return (
-        <TouchableOpacity style={styles.currentUserCard} onPress={handleCurrentUserPress}>
-          <View style={styles.friendLeft}>
-            <View style={styles.friendAvatar}>
-              <Text style={styles.avatarText}>👤</Text>
-            </View>
-            <View style={styles.friendInfo}>
-              <Text style={styles.currentUserName}>
-                {userName} <Text style={styles.youLabel}>(you)</Text>
-              </Text>
-              <Text style={styles.friendReceiptsCount}>0 receipts</Text>
-              <Text style={styles.friendReceiptsList}>No receipts yet</Text>
-            </View>
-          </View>
-          <View style={styles.friendRight}>
-            <Text style={styles.totalPaidLabel}>Total Paid</Text>
-            <Text style={styles.totalPaidAmount}>$0.00</Text>
-          </View>
-        </TouchableOpacity>
-      );
-    }
-    
-    // Show the user with their actual data from the API
     return (
-      <TouchableOpacity style={styles.currentUserCard} onPress={handleCurrentUserPress}>
+      <TouchableOpacity key={friend.id} style={cardStyle} onPress={() => handleFriendPress(friend)}>
         <View style={styles.friendLeft}>
           <View style={styles.friendAvatar}>
-            <Text style={styles.avatarText}>{currentUserFriend.avatar}</Text>
+            <Text style={styles.avatarText}>{friend.avatar}</Text>
           </View>
           <View style={styles.friendInfo}>
-            <Text style={styles.currentUserName}>
-              {currentUserFriend.name} <Text style={styles.youLabel}>(you)</Text>
+            <Text style={isCurrentUser ? styles.currentUserName : styles.friendName}>
+              {friend.name}{isCurrentUser && <Text style={styles.youLabel}> (You)</Text>}
             </Text>
-            <Text style={styles.friendReceiptsCount}>{currentUserFriend.receipts.length} receipts</Text>
+            <Text style={styles.friendReceiptsCount}>{friend.receipts.length} receipts</Text>
             <Text style={styles.friendReceiptsList}>
-              {currentUserFriend.receipts.slice(0, 2).join(', ')}
-              {currentUserFriend.receipts.length > 2 && `, +${currentUserFriend.receipts.length - 2} more`}
+              {friend.receipts.slice(0, 2).join(', ')}
+              {friend.receipts.length > 2 && `, +${friend.receipts.length - 2} more`}
             </Text>
           </View>
         </View>
         <View style={styles.friendRight}>
           <Text style={styles.totalPaidLabel}>Total Paid</Text>
           <Text style={styles.totalPaidAmount}>
-            ${currentUserFriend.totalPaid.toFixed(2)}
+            ${friend.totalPaid.toFixed(2)}
           </Text>
         </View>
       </TouchableOpacity>
     );
   };
-
-  const renderFriend = (friend: Friend) => (
-    <TouchableOpacity key={friend.id} style={styles.friendCard} onPress={() => handleFriendPress(friend)}>
-      <View style={styles.friendLeft}>
-        <View style={styles.friendAvatar}>
-          <Text style={styles.avatarText}>{friend.avatar}</Text>
-        </View>
-        <View style={styles.friendInfo}>
-          <Text style={styles.friendName}>{friend.name}</Text>
-          <Text style={styles.friendReceiptsCount}>{friend.receipts.length} receipts</Text>
-          <Text style={styles.friendReceiptsList}>
-            {friend.receipts.slice(0, 2).join(', ')}
-            {friend.receipts.length > 2 && `, +${friend.receipts.length - 2} more`}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.friendRight}>
-        <Text style={styles.totalPaidLabel}>Total Paid</Text>
-        <Text style={styles.totalPaidAmount}>
-          ${friend.totalPaid.toFixed(2)}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
 
     const renderFriendDetail = () => {
     if (!selectedFriend) return null;
@@ -1372,7 +1329,6 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
             renderItem={({ item }) => renderFriend(item)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.friendsList}
-            ListHeaderComponent={renderCurrentUser}
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}

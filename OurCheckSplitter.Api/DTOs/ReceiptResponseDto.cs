@@ -12,6 +12,7 @@ namespace OurCheckSplitter.Api.DTOs
         public DateTime CreatedDate { get; set; }
         public List<FriendResponseDto> Friends { get; set; } = new();
         public List<ItemResponseDto> Items { get; set; } = new();
+        public decimal UserPaidAmount { get; set; }
     }
 
     public class FriendResponseDto
