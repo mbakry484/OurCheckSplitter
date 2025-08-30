@@ -66,7 +66,14 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
         errorData = 'Failed to parse error response';
       }
       
-      console.error(`HTTP error! status: ${response.status}, body:`, errorData);
+      // Log different error types appropriately
+      if (response.status === 409) {
+        // 409 Conflict is expected for duplicates, log as info rather than error
+        console.log(`Conflict response (${response.status}):`, errorData);
+      } else {
+        // Other HTTP errors are actual errors
+        console.error(`HTTP error! status: ${response.status}, body:`, errorData);
+      }
       
       // Create a detailed error object for specific error cases
       const error = new Error(`HTTP error! status: ${response.status}`);
@@ -89,8 +96,15 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     console.log(`API call successful for ${endpoint}`, data); // Debug log
     return data;
   } catch (error) {
-    console.error(`API call failed for ${endpoint}:`, error);
-    console.error('Full error details:', error);
+    // Handle different error types with appropriate logging
+    if ((error as any)?.status === 409) {
+      // 409 Conflict is expected for duplicates, don't log as error
+      console.log(`API call returned conflict for ${endpoint}:`, (error as any)?.data);
+    } else {
+      // Other errors are actual failures
+      console.error(`API call failed for ${endpoint}:`, error);
+      console.error('Full error details:', error);
+    }
     throw error;
   }
 };

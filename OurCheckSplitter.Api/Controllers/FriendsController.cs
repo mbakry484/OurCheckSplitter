@@ -32,9 +32,20 @@ namespace OurCheckSplitter.Api.Controllers
             if (user == null)
                 return Unauthorized();
 
+            // Check if a friend with this name already exists for this user (case-insensitive)
+            var existingFriend = await _context.Friends
+                .FirstOrDefaultAsync(f => f.UserId == user.Id && 
+                                         f.Name != null && 
+                                         f.Name.ToLower() == dto.Name.Trim().ToLower());
+
+            if (existingFriend != null)
+            {
+                return Conflict($"A friend named '{dto.Name.Trim()}' already exists in your friends list.");
+            }
+
             var friend = new Friend
             {
-                Name = dto.Name,
+                Name = dto.Name.Trim(),
                 UserId = user.Id
             };
             _context.Friends.Add(friend);
@@ -45,7 +56,8 @@ namespace OurCheckSplitter.Api.Controllers
             {
                 Id = friend.Id,
                 Name = friend.Name ?? string.Empty,
-                Receipts = new List<ReceiptSummaryDto>()
+                Receipts = new List<ReceiptSummaryDto>(),
+                TotalPaidAmount = 0
             };
             return Ok(friendDto);
         }

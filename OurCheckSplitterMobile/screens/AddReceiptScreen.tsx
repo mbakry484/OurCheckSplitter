@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { spacing, fontSize, padding, height, width, screenDimensions } from '../utils/responsive';
 import { api } from '../services/api';
 import { FriendDto } from '../types/api';
+import { useAuth } from '../context/AuthContext';
 
 interface AddReceiptScreenProps {
   navigation?: any;
@@ -63,6 +64,14 @@ interface Friend {
 
 const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScreenProps) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  
+  // Extract username for current user identification
+  const userName = user 
+    ? (user.displayName && user.displayName !== 'User') 
+      ? user.displayName.split('@')[0] 
+      : user.email.split('@')[0]
+    : '';
   
   // Get basic data from route params (from overlay)
   const basicData = route?.params?.basicData;
@@ -449,9 +458,27 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
         setNewFriendName('');
         setShowAddFriendModal(false);
         setTotalFriends(prev => prev + 1);
-      } catch (error) {
-        console.error('Failed to create friend:', error);
-        Alert.alert('Error', 'Failed to add friend. Please try again.');
+      } catch (error: any) {
+        // Check if it's a 409 Conflict error (duplicate friend)
+        if (error?.status === 409) {
+          // Don't log 409 conflicts as errors - they're expected user scenarios
+          console.log('Duplicate friend attempt:', newFriendName.trim());
+          
+          // Extract error message from different possible formats
+          let errorMessage = `A friend named '${newFriendName.trim()}' already exists in your friends list.`;
+          
+          if (typeof error.data === 'string') {
+            errorMessage = error.data;
+          } else if (error.data && typeof error.data === 'object') {
+            errorMessage = error.data.message || error.data.title || error.data.detail || errorMessage;
+          }
+          
+          Alert.alert('Friend Already Exists', errorMessage);
+        } else {
+          // Log actual errors
+          console.error('Failed to create friend:', error);
+          Alert.alert('Error', 'Failed to add friend. Please try again.');
+        }
       }
     }
   };
@@ -817,6 +844,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                       isAssigned && styles.friendSelectionNameSelected
                     ]}>
                       {friend.name}
+                      {friend.name === userName && (
+                        <Text style={styles.youLabel}> (You)</Text>
+                      )}
                     </Text>
                     {isAssigned && (
                       <Ionicons name="checkmark-circle" size={14} color="#4ECDC4" />
@@ -912,6 +942,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                           isAssigned && styles.friendSelectionNameSelected
                         ]}>
                           {friend.name}
+                          {friend.name === userName && (
+                            <Text style={styles.youLabel}> (You)</Text>
+                          )}
                         </Text>
                         {isAssigned && (
                           <Ionicons name="checkmark-circle" size={14} color="#4ECDC4" />
@@ -1077,6 +1110,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
                          <Text style={styles.friendAvatar}>{friend.avatar}</Text>
                          <Text style={[styles.friendName, selectedFriends.some(f => f.id === friend.id) && styles.selectedFriendName]}>
                            {friend.name}
+                           {friend.name === userName && (
+                             <Text style={styles.youLabel}> (You)</Text>
+                           )}
                          </Text>
                        </TouchableOpacity>
                      ))}
@@ -2095,7 +2131,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#007AFF',
-    },
+  },
+  // Current user styling
+  youLabel: {
+    color: '#007AFF',
+    fontWeight: '600',
+  },
   });
 
 export default AddReceiptScreen;

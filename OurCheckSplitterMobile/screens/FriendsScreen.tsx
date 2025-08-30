@@ -420,9 +420,27 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
         setShowAddFriendModal(false);
         setNewFriendName('');
         Alert.alert('Success', `${newFriendName.trim()} has been added to your friends!`);
-      } catch (error) {
-        console.error('Error adding friend:', error);
-        Alert.alert('Error', 'Failed to add friend. Please try again.');
+      } catch (error: any) {
+        // Check if it's a 409 Conflict error (duplicate friend)
+        if (error?.status === 409) {
+          // Don't log 409 conflicts as errors - they're expected user scenarios
+          console.log('Duplicate friend attempt:', newFriendName.trim());
+          
+          // Extract error message from different possible formats
+          let errorMessage = `A friend named '${newFriendName.trim()}' already exists in your friends list.`;
+          
+          if (typeof error.data === 'string') {
+            errorMessage = error.data;
+          } else if (error.data && typeof error.data === 'object') {
+            errorMessage = error.data.message || error.data.title || error.data.detail || errorMessage;
+          }
+          
+          Alert.alert('Friend Already Exists', errorMessage);
+        } else {
+          // Log actual errors
+          console.error('Error adding friend:', error);
+          Alert.alert('Error', 'Failed to add friend. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
