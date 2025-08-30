@@ -15,7 +15,7 @@ import { spacing, fontSize, padding } from '../utils/responsive';
 
 interface LoginScreenProps {
   navigation?: any;
-  onLoginSuccess: (token: string, user: any) => Promise<void>;
+  onLoginSuccess: (token: string, user: any, isNewUser?: boolean) => Promise<void>;
 }
 
 const LoginScreen = ({ navigation, onLoginSuccess }: LoginScreenProps) => {
@@ -61,8 +61,8 @@ const LoginScreen = ({ navigation, onLoginSuccess }: LoginScreenProps) => {
       
       console.log('Firebase authentication successful for:', user.email);
       
-      // Call the success callback with real Firebase token
-      await onLoginSuccess(idToken, user);
+      // Call the success callback with real Firebase token and new user flag
+      await onLoginSuccess(idToken, user, isSignUp);
       
       Alert.alert('Success', `Welcome ${user.displayName}!`);
       

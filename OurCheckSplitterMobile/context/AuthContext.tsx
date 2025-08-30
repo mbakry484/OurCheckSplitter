@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setAuthToken } from '../services/api';
+import { setAuthToken, friendsApi } from '../services/api';
 
 interface User {
   uid: string;
@@ -13,7 +13,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (token: string, user: User) => Promise<void>;
+  login: (token: string, user: User, isNewUser?: boolean) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     checkAuthState();
   }, []);
 
-  const login = async (newToken: string, newUser: User) => {
+  const login = async (newToken: string, newUser: User, isNewUser: boolean = false) => {
     console.log('AuthContext: Logging in user:', newUser.email);
     
     try {
@@ -73,6 +73,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       setToken(newToken);
       setUser(newUser);
+      
+      // If this is a new user, automatically create a friend entry
+      if (isNewUser) {
+        try {
+          // Extract name from displayName or email (remove email domain if present)
+          const userName = (newUser.displayName && newUser.displayName !== 'User') 
+            ? newUser.displayName.split('@')[0] 
+            : newUser.email.split('@')[0];
+          console.log('AuthContext: Creating friend entry for new user:', userName);
+          
+          await friendsApi.createFriend(userName);
+          console.log('AuthContext: Successfully created friend entry for user');
+        } catch (friendError) {
+          console.error('AuthContext: Failed to create friend entry:', friendError);
+          // Don't throw here - we don't want to fail login if friend creation fails
+        }
+      }
       
       // Save to AsyncStorage for persistence
       await AsyncStorage.setItem('authToken', newToken);

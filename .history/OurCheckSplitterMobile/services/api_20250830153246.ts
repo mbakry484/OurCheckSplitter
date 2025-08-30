@@ -5,8 +5,8 @@ const getApiBaseUrl = () => {
     return 'https://your-production-api.com/api';
   }
   
-  // Development URLs - using ngrok tunnel for mobile hotspot access
-  return 'https://93633f8cb573.ngrok-free.app/api';  // ngrok tunnel URL - accept warning page
+  // Development URLs - using direct IP connection (no ngrok needed)
+  return 'http://192.168.1.17:5276/api';  // Your computer's IP address
   
   // Fallback options if the above doesn't work:
   // return 'http://10.0.2.2:5276/api';     // Android emulator localhost

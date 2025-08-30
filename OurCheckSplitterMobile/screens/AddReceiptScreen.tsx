@@ -128,9 +128,9 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
   const FRIENDS_PER_PAGE = 5;
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   
-  // Friends section collapse state - start collapsed by default
-  const [isFriendsSectionExpanded, setIsFriendsSectionExpanded] = useState(false);
-  const friendsSectionHeight = useState(new Animated.Value(0))[0]; // 1 for expanded, 0 for collapsed
+  // Friends section collapse state - start expanded by default to show first 5 friends
+  const [isFriendsSectionExpanded, setIsFriendsSectionExpanded] = useState(true);
+  const friendsSectionHeight = useState(new Animated.Value(1))[0]; // 1 for expanded, 0 for collapsed
   
   // Loading state for save operation
   const [isSaving, setIsSaving] = useState(false);
@@ -1095,36 +1095,33 @@ const AddReceiptScreen = ({ navigation, route, onEditBasicData }: AddReceiptScre
              <TouchableOpacity 
                style={styles.viewMoreButton}
                onPress={() => {
-                 if (!isFriendsSectionExpanded) {
-                   // If collapsed, expand the section
-                   toggleFriendsSection();
-                 } else if (hasMoreFriends) {
-                   // If expanded and has more friends, load more
+                 if (hasMoreFriends) {
+                   // Load more friends
                    loadMoreFriends();
                  } else {
-                   // If expanded and no more friends, collapse
+                   // If no more friends, collapse the section
                    toggleFriendsSection();
                  }
                }}
                disabled={isLoadingFriends}
              >
                <Text style={styles.viewMoreText}>
-                 {!isFriendsSectionExpanded 
-                   ? `Show Friends (${totalFriends} total)`
-                   : isLoadingFriends 
-                     ? 'Loading...' 
-                     : hasMoreFriends 
-                       ? `View More (${totalFriends - friends.length} remaining)`
-                       : 'Hide Friends'
+                 {isLoadingFriends 
+                   ? 'Loading...' 
+                   : hasMoreFriends 
+                     ? `Show More (${totalFriends - friends.length} remaining)`
+                     : totalFriends > 0
+                       ? 'Hide Friends'
+                       : 'No Friends Available'
                  }
                </Text>
                {!isLoadingFriends && (
                  <Ionicons 
-                   name={!isFriendsSectionExpanded 
+                   name={hasMoreFriends 
                      ? "chevron-down" 
-                     : hasMoreFriends 
-                       ? "chevron-down" 
-                       : "chevron-up"
+                     : totalFriends > 0
+                       ? "chevron-up"
+                       : "people-outline"
                    } 
                    size={16} 
                    color="#007AFF" 

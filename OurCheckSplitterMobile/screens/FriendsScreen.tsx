@@ -19,6 +19,7 @@ import { spacing, fontSize, padding, height, width, screenDimensions } from '../
 import { friendsApi } from '../services/api';
 import { PaginatedResponseDto, FriendDto } from '../types/api';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Receipt {
   id: string;
@@ -62,6 +63,7 @@ interface FriendsScreenProps {
 
 const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -710,8 +712,81 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
     },
   ];
 
-  // Since we're doing server-side filtering, we can directly use friends
-  const displayFriends = friends;
+  // Extract username and filter out the current user from the friends list so they don't appear twice
+  const userName = user 
+    ? (user.displayName && user.displayName !== 'User') 
+      ? user.displayName.split('@')[0] 
+      : user.email.split('@')[0]
+    : '';
+  const displayFriends = friends.filter(friend => friend.name !== userName);
+
+  const renderCurrentUser = () => {
+    if (!user) return null;
+    
+    // Find the current user in the friends list
+    const currentUserFriend = friends.find(friend => friend.name === userName);
+    
+    const handleCurrentUserPress = () => {
+      if (currentUserFriend) {
+        // If user exists in friends list, show their receipts
+        handleFriendPress(currentUserFriend);
+      } else {
+        // If user doesn't exist yet, show a message or create a placeholder
+        console.log('User not found in friends list yet');
+      }
+    };
+    
+    if (!currentUserFriend) {
+      // If user is not found in friends list, show with basic info but still clickable
+      return (
+        <TouchableOpacity style={styles.currentUserCard} onPress={handleCurrentUserPress}>
+          <View style={styles.friendLeft}>
+            <View style={styles.friendAvatar}>
+              <Text style={styles.avatarText}>👤</Text>
+            </View>
+            <View style={styles.friendInfo}>
+              <Text style={styles.currentUserName}>
+                {userName} <Text style={styles.youLabel}>(you)</Text>
+              </Text>
+              <Text style={styles.friendReceiptsCount}>0 receipts</Text>
+              <Text style={styles.friendReceiptsList}>No receipts yet</Text>
+            </View>
+          </View>
+          <View style={styles.friendRight}>
+            <Text style={styles.totalPaidLabel}>Total Paid</Text>
+            <Text style={styles.totalPaidAmount}>$0.00</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+    
+    // Show the user with their actual data from the API
+    return (
+      <TouchableOpacity style={styles.currentUserCard} onPress={handleCurrentUserPress}>
+        <View style={styles.friendLeft}>
+          <View style={styles.friendAvatar}>
+            <Text style={styles.avatarText}>{currentUserFriend.avatar}</Text>
+          </View>
+          <View style={styles.friendInfo}>
+            <Text style={styles.currentUserName}>
+              {currentUserFriend.name} <Text style={styles.youLabel}>(you)</Text>
+            </Text>
+            <Text style={styles.friendReceiptsCount}>{currentUserFriend.receipts.length} receipts</Text>
+            <Text style={styles.friendReceiptsList}>
+              {currentUserFriend.receipts.slice(0, 2).join(', ')}
+              {currentUserFriend.receipts.length > 2 && `, +${currentUserFriend.receipts.length - 2} more`}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.friendRight}>
+          <Text style={styles.totalPaidLabel}>Total Paid</Text>
+          <Text style={styles.totalPaidAmount}>
+            ${currentUserFriend.totalPaid.toFixed(2)}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderFriend = (friend: Friend) => (
     <TouchableOpacity key={friend.id} style={styles.friendCard} onPress={() => handleFriendPress(friend)}>
@@ -1297,6 +1372,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
             renderItem={({ item }) => renderFriend(item)}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.friendsList}
+            ListHeaderComponent={renderCurrentUser}
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -1495,6 +1571,32 @@ const styles = StyleSheet.create({
   },
   friendsList: {
     paddingTop: 10,
+  },
+  currentUserCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  currentUserName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  youLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+    fontStyle: 'italic',
   },
   friendCard: {
     flexDirection: 'row',
