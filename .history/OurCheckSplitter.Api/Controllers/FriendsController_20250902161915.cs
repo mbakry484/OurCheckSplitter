@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OurCheckSplitter.Api.Data;
@@ -82,27 +82,7 @@ namespace OurCheckSplitter.Api.Controllers
             // If no pagination parameters, return all friends (backward compatibility)
             if (!usePagination)
             {
-                var allFriendsQuery = _context.Friends.Where(f => f.UserId == user.Id).AsQueryable();
-                
-                // Apply search filter for non-paginated results too
-                if (!string.IsNullOrWhiteSpace(searchTerm))
-                {
-                    var searchTermLower = searchTerm.ToLower();
-                    Console.WriteLine($"Applying non-paginated friends search filter for: '{searchTermLower}'");
-                    allFriendsQuery = allFriendsQuery.Where(f => 
-                        // Search by friend name
-                        (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
-                        // Search by receipt name (friends assigned to receipts with matching names)
-                        _context.Receipts.Any(r => 
-                            r.UserId == user.Id && 
-                            r.Name != null && 
-                            r.Name.ToLower().Contains(searchTermLower) &&
-                            r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
-                        )
-                    );
-                }
-                
-                var allFriends = await allFriendsQuery.ToListAsync();
+                var allFriends = await _context.Friends.Where(f => f.UserId == user.Id).ToListAsync();
                 var allFriendDtos = new List<FriendDto>();
                 
                 // Extract user's name from DisplayName or Email
@@ -114,10 +94,8 @@ namespace OurCheckSplitter.Api.Controllers
                 var nonPagedCurrentUserFriend = allFriends.FirstOrDefault(f => 
                     f.Name?.Equals(nonPagedCurrentUserName, StringComparison.OrdinalIgnoreCase) == true);
                 
-                // If current user is not found as a friend, create them automatically (only if no search term or they match the search)
-                if (nonPagedCurrentUserFriend == null && 
-                    (string.IsNullOrWhiteSpace(searchTerm) || 
-                     nonPagedCurrentUserName.ToLower().Contains(searchTerm.ToLower())))
+                // If current user is not found as a friend, create them automatically
+                if (nonPagedCurrentUserFriend == null)
                 {
                     nonPagedCurrentUserFriend = new Friend
                     {
@@ -205,22 +183,21 @@ namespace OurCheckSplitter.Api.Controllers
                 .Where(f => f.UserId == user.Id)
                 .AsQueryable();
 
-            // Apply search filter - search by friend name OR receipt name
+            // Apply search filter
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var searchTermLower = searchTerm.ToLower();
                 Console.WriteLine($"Applying friends search filter for: '{searchTermLower}'");
-                query = query.Where(f => 
-                    // Search by friend name
-                    (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
-                    // Search by receipt name (friends assigned to receipts with matching names)
-                    _context.Receipts.Any(r => 
-                        r.UserId == user.Id && 
-                        r.Name != null && 
-                        r.Name.ToLower().Contains(searchTermLower) &&
-                        r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
-                    )
-                );
+                query = query
+                    .Where(f => 
+                        // Search by friend name
+                        (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
+                        // Search by receipt titles that friend is part of
+                        f.FriendReceipts.Any(fr => 
+                            fr.Receipt.Title != null && 
+                            fr.Receipt.Title.ToLower().Contains(searchTermLower)
+                        )
+                    );
             }
 
             // Get total count before pagination
@@ -231,10 +208,8 @@ namespace OurCheckSplitter.Api.Controllers
             var currentUserFriend = await query
                 .FirstOrDefaultAsync(f => f.Name != null && f.Name.ToLower() == currentUserName.ToLower());
             
-            // If current user is not found as a friend, create them automatically (only if no search term or they match the search)
-            if (currentUserFriend == null && 
-                (string.IsNullOrWhiteSpace(searchTerm) || 
-                 currentUserName.ToLower().Contains(searchTerm.ToLower())))
+            // If current user is not found as a friend, create them automatically
+            if (currentUserFriend == null)
             {
                 currentUserFriend = new Friend
                 {
@@ -249,17 +224,7 @@ namespace OurCheckSplitter.Api.Controllers
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     var searchTermLower = searchTerm.ToLower();
-                    query = query.Where(f => 
-                        // Search by friend name
-                        (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
-                        // Search by receipt name (friends assigned to receipts with matching names)
-                        _context.Receipts.Any(r => 
-                            r.UserId == user.Id && 
-                            r.Name != null && 
-                            r.Name.ToLower().Contains(searchTermLower) &&
-                            r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
-                        )
-                    );
+                    query = query.Where(f => f.Name != null && f.Name.ToLower().Contains(searchTermLower));
                 }
             }
 

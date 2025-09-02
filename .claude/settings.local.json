@@ -27,7 +27,8 @@
       "Bash(ngrok:*)",
       "Bash(refreshenv)",
       "Bash(timeout:*)",
-      "Bash(Stop-Process -Id 8960 -Force)"
+      "Bash(Stop-Process -Id 8960 -Force)",
+      "Bash(Stop-Process -Name \"OurCheckSplitter.Api\" -Force)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits"

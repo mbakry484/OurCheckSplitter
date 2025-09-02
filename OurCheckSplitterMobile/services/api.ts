@@ -6,7 +6,7 @@ const getApiBaseUrl = () => {
   }
   
   // Development URLs - using ngrok tunnel for mobile hotspot access
-  return 'https://93633f8cb573.ngrok-free.app/api';  // ngrok tunnel URL - accept warning page
+  return 'https://4cef852954ce.ngrok-free.app/api';  // ngrok tunnel URL - accept warning page
   
   // Fallback options if the above doesn't work:
   // return 'http://10.0.2.2:5276/api';     // Android emulator localhost

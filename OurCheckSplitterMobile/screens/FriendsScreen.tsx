@@ -1306,7 +1306,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
         <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search friends..."
+          placeholder="Search friends or receipts..."
           placeholderTextColor="#999"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -1334,7 +1334,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007AFF" />
             <Text style={styles.loadingText}>
-              {searchQuery.length > 0 ? 'Searching friends...' : 'Loading friends...'}
+              {searchQuery.length > 0 ? 'Searching friends and receipts...' : 'Loading friends...'}
             </Text>
           </View>
         )}
@@ -1375,7 +1375,7 @@ const FriendsScreen = ({ navigation, route }: FriendsScreenProps) => {
                     <Ionicons name="search-outline" size={48} color="#ccc" />
                     <Text style={styles.noResultsText}>No friends found</Text>
                     <Text style={styles.noResultsSubtext}>
-                      Try searching for a different name
+                      Try searching for a friend name or receipt name
                     </Text>
                     <TouchableOpacity 
                       style={styles.clearSearchButton} 
