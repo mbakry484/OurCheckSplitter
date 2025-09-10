@@ -1,4 +1,4 @@
-config
+config/
 appsettings.json
 bin/
 .vs/

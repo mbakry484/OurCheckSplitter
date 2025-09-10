@@ -1,7 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using OurCheckSplitter.Api.Data;
-using OurCheckSplitter.Api.Controllers;
-using AutoMapper;
 using OurCheckSplitter.Api.Mappers;
 using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
