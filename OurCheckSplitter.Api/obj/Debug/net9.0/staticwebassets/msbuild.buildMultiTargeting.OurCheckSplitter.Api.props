@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\OurCheckSplitter.Api.props" />
-</Project>

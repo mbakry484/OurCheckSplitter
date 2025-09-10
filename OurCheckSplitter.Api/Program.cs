@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Sqlite;
 using OurCheckSplitter.Api.Data;
 using OurCheckSplitter.Api.Controllers;
 using AutoMapper;
@@ -23,7 +22,7 @@ if (FirebaseApp.DefaultInstance == null)
 }
 
 builder.Services.AddDbContext<OurCheckSplitterContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("OurCheckSplitter")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("OurCheckSplitter")));
 
 // Add services to the container.
 builder.Services.AddControllers();
