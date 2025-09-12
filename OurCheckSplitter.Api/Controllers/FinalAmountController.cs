@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OurCheckSplitter.Api.Data;
 using OurCheckSplitter.Api.DTOs;
+using OurCheckSplitter.Api.Attributes;
 
 namespace OurCheckSplitter.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [FirebaseAuthorize]
     public class FinalAmountController : ControllerBase
     {
         private readonly OurCheckSplitterContext _context;

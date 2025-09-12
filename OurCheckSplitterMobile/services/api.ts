@@ -1,19 +1,21 @@
 // API Configuration and Base Service
 // Network configuration for React Native
 const getApiBaseUrl = () => {
-  if (!__DEV__) {
-    return 'https://your-production-api.com/api';
-  }
+  // Always use production API - no more ngrok development server
+  return 'http://ourchecksplitter.runasp.net/api';
   
-  // Development URLs - using ngrok tunnel for mobile hotspot access
-  return 'https://4cef852954ce.ngrok-free.app/api';  // ngrok tunnel URL - accept warning page
-  
-  // Fallback options if the above doesn't work:
+  // Development URLs (commented out - use production instead):
+  // return 'https://4cef852954ce.ngrok-free.app/api';  // ngrok tunnel URL
   // return 'http://10.0.2.2:5276/api';     // Android emulator localhost
   // return 'http://localhost:5276/api';    // Direct localhost (usually fails in RN)
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+// Debug logging
+console.log('API Configuration:');
+console.log('__DEV__:', __DEV__);
+console.log('API_BASE_URL:', API_BASE_URL);
 
 // Store auth token for API calls
 let authToken: string | null = null;
@@ -36,8 +38,14 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
 
   // Add authentication token if available
   if (authToken) {
+    // Try multiple header formats to ensure compatibility
     headers['Authorization'] = `Bearer ${authToken}`;
+    headers['authorization'] = `Bearer ${authToken}`;
+    headers['X-Authorization'] = `Bearer ${authToken}`;
     console.log('API: Adding auth token to request');
+    console.log('API: Token length:', authToken.length);
+    console.log('API: Token preview:', authToken.substring(0, 20) + '...');
+    console.log('API: Full Authorization header:', headers['Authorization']);
   } else {
     console.log('API: No auth token available');
   }
@@ -46,6 +54,14 @@ const apiCall = async (endpoint: string, options: RequestInit = {}) => {
     headers,
     ...options,
   };
+
+  // Debug: Log the exact config being sent
+  console.log('API: Request config:', {
+    url,
+    method: config.method || 'GET',
+    headers: config.headers,
+    hasAuth: !!headers['Authorization']
+  });
 
   try {
     const response = await fetch(url, config);
@@ -306,6 +322,11 @@ export const testApi = {
   // Debug data to see what's in database
   debugData: async () => {
     return apiCall('/Test/debug-data');
+  },
+
+  // Log headers to see what's being sent
+  logHeaders: async () => {
+    return apiCall('/Test/log-headers');
   },
 };
 

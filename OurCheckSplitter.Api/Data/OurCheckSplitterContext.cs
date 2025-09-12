@@ -40,13 +40,13 @@ namespace OurCheckSplitter.Api.Data
                 .HasOne(fr => fr.Friend)
                 .WithMany(f => f.FriendReceipts)
                 .HasForeignKey(fr => fr.FriendId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             modelBuilder.Entity<FriendReceipt>()
                 .HasOne(fr => fr.Receipt)
                 .WithMany(r => r.FriendReceipts)
                 .HasForeignKey(fr => fr.ReceiptId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.NoAction);
 
             // Ensure unique combination of FriendId and ReceiptId
             modelBuilder.Entity<FriendReceipt>()

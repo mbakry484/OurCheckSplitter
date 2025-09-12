@@ -11,8 +11,10 @@ namespace OurCheckSplitter.Api.Services
             {
                 return await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"FirebaseAuth: Token verification error: {ex.Message}");
+                Console.WriteLine($"FirebaseAuth: Exception type: {ex.GetType().Name}");
                 return null;
             }
         }

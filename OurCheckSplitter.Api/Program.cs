@@ -85,8 +85,8 @@ if (app.Environment.IsDevelopment())
 // Use CORS before controllers
 app.UseCors("AllowAll");
 
-// Use Firebase authentication middleware
-app.UseMiddleware<OurCheckSplitter.Api.Services.FirebaseAuthenticationMiddleware>();
+// Firebase authentication is now handled by FirebaseAuthorizeAttribute on controllers
+// app.UseMiddleware<OurCheckSplitter.Api.Services.FirebaseAuthenticationMiddleware>();
 
 // Add static files and default files support
 app.UseDefaultFiles();

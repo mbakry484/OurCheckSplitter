@@ -7,11 +7,13 @@ using OurCheckSplitter.Api.DTOs;
 using OurCheckSplitter.Api.Entities;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
+using OurCheckSplitter.Api.Attributes;
 
 namespace OurCheckSplitter.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FirebaseAuthorize]
     public class ReceiptController : ControllerBase
     {
         private readonly OurCheckSplitterContext _context;
@@ -970,8 +972,8 @@ namespace OurCheckSplitter.Api.Controllers
             try
             {
                 // Extract user's name from DisplayName or Email
-                var currentUserName = (user.DisplayName != null && user.DisplayName != "User") 
-                    ? user.DisplayName.Split('@')[0] 
+                var currentUserName = (user.DisplayName != null && user.DisplayName != "User")
+                    ? user.DisplayName.Split('@')[0]
                     : user.Email.Split('@')[0];
 
                 // Find the current user's friend entry
@@ -1034,7 +1036,7 @@ namespace OurCheckSplitter.Api.Controllers
                 var friendCount = receipt.FriendReceipts?.Count ?? 0;
                 bool tipsIncluded = receipt.TipsIncludedInTotal;
                 decimal subtotal;
-                
+
                 if (tipsIncluded)
                 {
                     subtotal = (decimal)receipt.Total - (decimal)receipt.Tax - totalTips;

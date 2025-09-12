@@ -109,6 +109,10 @@ const HomeScreen = ({ navigation }: HomeScreenProps) => {
         // Debug: Check what data exists in the database
         const debugData = await api.test.debugData();
         console.log('Debug data from database:', debugData);
+        
+        // Debug: Check what headers are being sent
+        const headersData = await api.test.logHeaders();
+        console.log('Headers being sent:', headersData);
       } catch (testError) {
         console.error('API connectivity test failed:', testError);
         // Continue anyway, maybe it's just the test endpoint

@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using Microsoft.AspNetCore.Mvc;
+﻿﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OurCheckSplitter.Api.Data;
@@ -6,11 +6,13 @@ using OurCheckSplitter.Api.DTOs;
 using OurCheckSplitter.Api.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.Annotations;
+using OurCheckSplitter.Api.Attributes;
 
 namespace OurCheckSplitter.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [FirebaseAuthorize]
     public class FriendsController : ControllerBase
     {
         private readonly OurCheckSplitterContext _context;
@@ -34,8 +36,8 @@ namespace OurCheckSplitter.Api.Controllers
 
             // Check if a friend with this name already exists for this user (case-insensitive)
             var existingFriend = await _context.Friends
-                .FirstOrDefaultAsync(f => f.UserId == user.Id && 
-                                         f.Name != null && 
+                .FirstOrDefaultAsync(f => f.UserId == user.Id &&
+                                         f.Name != null &&
                                          f.Name.ToLower() == dto.Name.Trim().ToLower());
 
             if (existingFriend != null)
@@ -83,40 +85,40 @@ namespace OurCheckSplitter.Api.Controllers
             if (!usePagination)
             {
                 var allFriendsQuery = _context.Friends.Where(f => f.UserId == user.Id).AsQueryable();
-                
+
                 // Apply search filter for non-paginated results too
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     var searchTermLower = searchTerm.ToLower();
                     Console.WriteLine($"Applying non-paginated friends search filter for: '{searchTermLower}'");
-                    allFriendsQuery = allFriendsQuery.Where(f => 
+                    allFriendsQuery = allFriendsQuery.Where(f =>
                         // Search by friend name
                         (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
                         // Search by receipt name (friends assigned to receipts with matching names)
-                        _context.Receipts.Any(r => 
-                            r.UserId == user.Id && 
-                            r.Name != null && 
+                        _context.Receipts.Any(r =>
+                            r.UserId == user.Id &&
+                            r.Name != null &&
                             r.Name.ToLower().Contains(searchTermLower) &&
                             r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
                         )
                     );
                 }
-                
+
                 var allFriends = await allFriendsQuery.ToListAsync();
                 var allFriendDtos = new List<FriendDto>();
-                
+
                 // Extract user's name from DisplayName or Email
-                var nonPagedCurrentUserName = (user.DisplayName != null && user.DisplayName != "User") 
-                    ? user.DisplayName.Split('@')[0] 
+                var nonPagedCurrentUserName = (user.DisplayName != null && user.DisplayName != "User")
+                    ? user.DisplayName.Split('@')[0]
                     : user.Email.Split('@')[0];
-                
+
                 // Find current user's friend entry
-                var nonPagedCurrentUserFriend = allFriends.FirstOrDefault(f => 
+                var nonPagedCurrentUserFriend = allFriends.FirstOrDefault(f =>
                     f.Name?.Equals(nonPagedCurrentUserName, StringComparison.OrdinalIgnoreCase) == true);
-                
+
                 // If current user is not found as a friend, create them automatically (only if no search term or they match the search)
-                if (nonPagedCurrentUserFriend == null && 
-                    (string.IsNullOrWhiteSpace(searchTerm) || 
+                if (nonPagedCurrentUserFriend == null &&
+                    (string.IsNullOrWhiteSpace(searchTerm) ||
                      nonPagedCurrentUserName.ToLower().Contains(searchTerm.ToLower())))
                 {
                     nonPagedCurrentUserFriend = new Friend
@@ -126,11 +128,11 @@ namespace OurCheckSplitter.Api.Controllers
                     };
                     _context.Friends.Add(nonPagedCurrentUserFriend);
                     await _context.SaveChangesAsync();
-                    
+
                     // Add to the list for processing
                     allFriends.Add(nonPagedCurrentUserFriend);
                 }
-                
+
                 // Process current user first if found
                 if (nonPagedCurrentUserFriend != null)
                 {
@@ -150,7 +152,7 @@ namespace OurCheckSplitter.Api.Controllers
                         var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, nonPagedCurrentUserFriend.Id);
                         totalPaidAmount += friendAmount;
                     }
-                    
+
                     allFriendDtos.Add(new FriendDto
                     {
                         Id = nonPagedCurrentUserFriend.Id,
@@ -158,11 +160,11 @@ namespace OurCheckSplitter.Api.Controllers
                         Receipts = receipts,
                         TotalPaidAmount = totalPaidAmount
                     });
-                    
+
                     // Remove current user from the list to avoid duplication
                     allFriends = allFriends.Where(f => f.Id != nonPagedCurrentUserFriend.Id).ToList();
                 }
-                
+
                 // Process remaining friends
                 foreach (var friend in allFriends)
                 {
@@ -196,10 +198,10 @@ namespace OurCheckSplitter.Api.Controllers
             }
 
             // Extract user's name from DisplayName or Email
-            var currentUserName = (user.DisplayName != null && user.DisplayName != "User") 
-                ? user.DisplayName.Split('@')[0] 
+            var currentUserName = (user.DisplayName != null && user.DisplayName != "User")
+                ? user.DisplayName.Split('@')[0]
                 : user.Email.Split('@')[0];
-            
+
             // Build query with search filtering
             var query = _context.Friends
                 .Where(f => f.UserId == user.Id)
@@ -210,13 +212,13 @@ namespace OurCheckSplitter.Api.Controllers
             {
                 var searchTermLower = searchTerm.ToLower();
                 Console.WriteLine($"Applying friends search filter for: '{searchTermLower}'");
-                query = query.Where(f => 
+                query = query.Where(f =>
                     // Search by friend name
                     (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
                     // Search by receipt name (friends assigned to receipts with matching names)
-                    _context.Receipts.Any(r => 
-                        r.UserId == user.Id && 
-                        r.Name != null && 
+                    _context.Receipts.Any(r =>
+                        r.UserId == user.Id &&
+                        r.Name != null &&
                         r.Name.ToLower().Contains(searchTermLower) &&
                         r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
                     )
@@ -230,10 +232,10 @@ namespace OurCheckSplitter.Api.Controllers
             // Find current user's friend entry first
             var currentUserFriend = await query
                 .FirstOrDefaultAsync(f => f.Name != null && f.Name.ToLower() == currentUserName.ToLower());
-            
+
             // If current user is not found as a friend, create them automatically (only if no search term or they match the search)
-            if (currentUserFriend == null && 
-                (string.IsNullOrWhiteSpace(searchTerm) || 
+            if (currentUserFriend == null &&
+                (string.IsNullOrWhiteSpace(searchTerm) ||
                  currentUserName.ToLower().Contains(searchTerm.ToLower())))
             {
                 currentUserFriend = new Friend
@@ -243,19 +245,19 @@ namespace OurCheckSplitter.Api.Controllers
                 };
                 _context.Friends.Add(currentUserFriend);
                 await _context.SaveChangesAsync();
-                
+
                 // Refresh the query to include the new friend
                 query = _context.Friends.Where(f => f.UserId == user.Id).AsQueryable();
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     var searchTermLower = searchTerm.ToLower();
-                    query = query.Where(f => 
+                    query = query.Where(f =>
                         // Search by friend name
                         (f.Name != null && f.Name.ToLower().Contains(searchTermLower)) ||
                         // Search by receipt name (friends assigned to receipts with matching names)
-                        _context.Receipts.Any(r => 
-                            r.UserId == user.Id && 
-                            r.Name != null && 
+                        _context.Receipts.Any(r =>
+                            r.UserId == user.Id &&
+                            r.Name != null &&
                             r.Name.ToLower().Contains(searchTermLower) &&
                             r.Items.Any(i => i.Assignments.Any(a => a.FriendAssignments.Any(fa => fa.FriendId == f.Id)))
                         )
@@ -291,7 +293,7 @@ namespace OurCheckSplitter.Api.Controllers
                     var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friend.Id);
                     totalPaidAmount += friendAmount;
                 }
-                
+
                 friendDtos.Add(new FriendDto
                 {
                     Id = friend.Id,
@@ -342,8 +344,9 @@ namespace OurCheckSplitter.Api.Controllers
                 totalPaidAmount += friendAmount;
             }
 
-            var dto = new FriendDto { 
-                Name = friend.Name ?? string.Empty, 
+            var dto = new FriendDto
+            {
+                Name = friend.Name ?? string.Empty,
                 Receipts = receipts,
                 TotalPaidAmount = totalPaidAmount
             };
@@ -404,8 +407,8 @@ namespace OurCheckSplitter.Api.Controllers
                 return Unauthorized();
 
             // Extract user's name from DisplayName or Email
-            var currentUserName = (user.DisplayName != null && user.DisplayName != "User") 
-                ? user.DisplayName.Split('@')[0] 
+            var currentUserName = (user.DisplayName != null && user.DisplayName != "User")
+                ? user.DisplayName.Split('@')[0]
                 : user.Email.Split('@')[0];
 
             // Find the current user's friend entry
@@ -464,7 +467,7 @@ namespace OurCheckSplitter.Api.Controllers
             foreach (var receipt in receipts)
             {
                 var friendAmount = await CalculateFriendAmountForReceipt(receipt.Id, friendId);
-                
+
                 receiptAmounts.Add(new
                 {
                     ReceiptId = receipt.Id,
@@ -538,7 +541,7 @@ namespace OurCheckSplitter.Api.Controllers
                 var friendCount = receipt.FriendReceipts?.Count ?? 0;
                 bool tipsIncluded = receipt.TipsIncludedInTotal;
                 decimal subtotal;
-                
+
                 if (tipsIncluded)
                 {
                     subtotal = (decimal)receipt.Total - (decimal)receipt.Tax - totalTips;
